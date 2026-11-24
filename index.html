@@ -1,0 +1,3825 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="artifact-type" content="dashboard">
+  <meta name="design-style" content="aurora">
+  <title>Slate &amp; Gate — Production Ops &amp; Client Isolation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root,
+    [data-theme="dark"] {
+      color-scheme: dark;
+      /* Base palette tokens */
+      --background: #07090f;
+      --surface-container-low: #0b0f18;
+      --surface-container: #111622;
+      --surface-container-high: #172032;
+      --on-surface: #f8fafc;
+      --on-surface-variant: #94a3b8;
+      --outline: #334155;
+      --outline-variant: rgba(200, 209, 224, 0.16);
+      --primary: #38bdf8;
+      --on-primary: #06121b;
+      --primary-container: #0f294d;
+      --on-primary-container: #e0f2fe;
+      --secondary: #1d4ed8;
+      --tertiary: #10b981;
+      --error: #ef4444;
+      --on-error: #ffffff;
+      --positive: #10b981;
+      --warning: #f59e0b;
+      --focus: #38bdf8;
+      --silver: #c8d1e0;
+      --splash-base: #05070b;
+      --splash-mid: #141a26;
+      --splash-core: #242b38;
+      --splash-sheen: rgba(255, 255, 255, 0.03);
+      --glass-backdrop: rgba(7, 9, 15, 0.84);
+      --card-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+      --navy-gloss: linear-gradient(135deg, #0f294d 0%, #1d4ed8 100%);
+      --panel-gradient: linear-gradient(180deg, rgba(20, 27, 43, 0.94) 0%, rgba(14, 19, 30, 0.96) 100%);
+      --halo-glow: radial-gradient(circle, rgba(56, 189, 248, 0.13) 0%, rgba(29, 78, 216, 0.05) 44%, transparent 70%);
+      --ambient-orb-1: rgba(29, 78, 216, 0.16);
+      --ambient-orb-2: rgba(200, 209, 224, 0.08);
+      --cyan-tint: rgba(56, 189, 248, 0.14);
+      --emerald-tint: rgba(16, 185, 129, 0.14);
+      --amber-tint: rgba(245, 158, 11, 0.14);
+      --red-tint: rgba(239, 68, 68, 0.14);
+      --lut-gradient: linear-gradient(125deg, rgba(14, 165, 233, 0.14), rgba(245, 158, 11, 0.14), rgba(168, 85, 247, 0.14), rgba(16, 185, 129, 0.14));
+      --holo-grid: rgba(56, 189, 248, 0.09);
+
+      /* Data series */
+      --data-1: #38bdf8;
+      --data-2: #10b981;
+      --data-3: #f59e0b;
+      --data-4: #ef4444;
+      --data-context: #475569;
+
+      /* Typography */
+      --font-headline: 'Plus Jakarta Sans', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-label: 'JetBrains Mono', monospace;
+
+      --display-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem);
+      --headline-size: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);
+      --subhead-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+      --body-size: clamp(0.9375rem, 0.9rem + 0.15vw, 1rem);
+      --label-size: 0.75rem;
+
+      /* Spacing scale */
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2.5rem;
+      --space-2xl: 4rem;
+
+      /* Radii & Motion */
+      --rounded: 0.5rem;
+      --rounded-lg: 0.875rem;
+      --rounded-full: 9999px;
+      --hairline: 1px solid var(--outline-variant);
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --dur-micro: 140ms;
+      --dur-short: 240ms;
+      --dur-long: 420ms;
+    }
+
+    [data-theme="light"] {
+      color-scheme: light;
+      --background: #f4f6fa;
+      --surface-container-low: #eaf0f6;
+      --surface-container: #ffffff;
+      --surface-container-high: #e2e8f0;
+      --on-surface: #0f172a;
+      --on-surface-variant: #475569;
+      --outline: #94a3b8;
+      --outline-variant: #cbd5e1;
+      --primary: #0284c7;
+      --on-primary: #ffffff;
+      --primary-container: #dbeafe;
+      --on-primary-container: #0f172a;
+      --secondary: #1e40af;
+      --tertiary: #059669;
+      --error: #dc2626;
+      --on-error: #ffffff;
+      --positive: #059669;
+      --warning: #d97706;
+      --focus: #0284c7;
+      --silver: #334155;
+      --glass-backdrop: rgba(244, 246, 250, 0.92);
+      --card-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+      --navy-gloss: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+      --panel-gradient: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      --halo-glow: radial-gradient(circle, rgba(2, 132, 199, 0.08) 0%, transparent 65%);
+      --ambient-orb-1: rgba(37, 99, 235, 0.06);
+      --ambient-orb-2: rgba(100, 116, 139, 0.05);
+      --cyan-tint: rgba(2, 132, 199, 0.1);
+      --emerald-tint: rgba(5, 150, 105, 0.1);
+      --amber-tint: rgba(217, 119, 6, 0.12);
+      --red-tint: rgba(220, 38, 38, 0.1);
+      --lut-gradient: linear-gradient(125deg, rgba(2, 132, 199, 0.08), rgba(217, 119, 6, 0.08), rgba(147, 51, 234, 0.08), rgba(5, 150, 105, 0.08));
+      --holo-grid: rgba(2, 132, 199, 0.07);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { overflow-x: clip; margin: 0; padding: 0; }
+    header { position: static !important; }
+
+    body {
+      font-family: var(--font-body);
+      font-size: var(--body-size);
+      background-color: var(--background);
+      color: var(--on-surface);
+      line-height: 1.55;
+      min-height: 100vh;
+      transition: background-color var(--dur-short) var(--ease-out), color var(--dur-short) var(--ease-out);
+    }
+
+    h1, h2, h3, h4, .stage-title, .section-title {
+      font-family: var(--font-headline);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--on-surface);
+      margin: 0;
+    }
+
+    p, label, .sub-text {
+      font-family: var(--font-body);
+      color: var(--on-surface-variant);
+      margin: 0;
+    }
+
+    .mono-tag, .pairing-code, .file-path, .timecode-badge {
+      font-family: var(--font-label);
+      font-variant-numeric: tabular-nums;
+    }
+
+    button, input, select, textarea {
+      font-family: var(--font-body);
+      color: var(--on-surface);
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    /* Ambient studio layer & mouse halo */
+    .ambient-studio-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 18% 20%, var(--ambient-orb-1), transparent 44%),
+        radial-gradient(circle at 82% 80%, var(--ambient-orb-2), transparent 46%),
+        var(--background);
+      animation: ambientDrift 18s ease-in-out infinite alternate;
+    }
+    @keyframes ambientDrift {
+      0% { transform: scale(1) translate(0, 0); }
+      100% { transform: scale(1.06) translate(-1%, 1%); }
+    }
+
+    #mouse-halo {
+      position: fixed;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: var(--halo-glow);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: -1;
+      transition: opacity var(--dur-short) ease;
+    }
+    body.no-halo #mouse-halo { opacity: 0 !important; }
+
+    /* 100% SOLID OPAQUE SPLASH SCREEN — ZERO BACKGROUND BLEED */
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      opacity: 1;
+      background-color: var(--splash-base);
+      background-image:
+        radial-gradient(circle at 50% 42%, var(--splash-core) 0%, var(--splash-mid) 50%, var(--splash-base) 100%),
+        repeating-linear-gradient(135deg, var(--splash-sheen) 0px, var(--splash-sheen) 1px, transparent 1px, transparent 5px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-lg);
+      overflow: hidden;
+      transition: opacity 0.65s var(--ease-out);
+    }
+    #splash-screen.splash-exit {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #splash-bg-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .splash-inner {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      max-width: 720px;
+    }
+    .splash-slate-icon {
+      width: 72px;
+      height: 72px;
+      margin-bottom: var(--space-lg);
+      color: var(--silver);
+      filter: drop-shadow(0 0 18px var(--cyan-tint));
+    }
+    .slate-top-arm {
+      transform-origin: 12px 26px;
+      animation: clapperSnap 1.4s var(--ease-out) 0.2s forwards;
+    }
+    @keyframes clapperSnap {
+      0% { transform: rotate(-30deg); }
+      55% { transform: rotate(-30deg); }
+      78% { transform: rotate(2deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .splash-swap-wrap {
+      display: inline-flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 0.65rem;
+      font-family: var(--font-headline);
+      font-size: clamp(2.4rem, 6.5vw, 4.75rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #f8fafc;
+      perspective: 900px;
+    }
+    .swap-word-left {
+      display: inline-block;
+      animation: swapLeftIn 1.1s var(--ease-out) forwards;
+    }
+    .swap-word-amp {
+      display: inline-block;
+      color: var(--primary);
+      animation: ampFlip 1.2s var(--ease-out) forwards;
+    }
+    .swap-word-right {
+      display: inline-block;
+      animation: swapRightIn 1.1s var(--ease-out) forwards;
+    }
+    @keyframes swapLeftIn {
+      0% { opacity: 0.4; transform: translateX(48px) rotateX(60deg) scale(0.9); }
+      60% { opacity: 1; transform: translateX(-6px) rotateX(0deg) scale(1.04); }
+      100% { opacity: 1; transform: translateX(0) rotateX(0deg) scale(1); }
+    }
+    @keyframes swapRightIn {
+      0% { opacity: 0.4; transform: translateX(-48px) rotateX(-60deg) scale(0.9); }
+      60% { opacity: 1; transform: translateX(6px) rotateX(0deg) scale(1.04); }
+      100% { opacity: 1; transform: translateX(0) rotateX(0deg) scale(1); }
+    }
+    @keyframes ampFlip {
+      0% { opacity: 0.4; transform: rotateY(160deg) scale(0.5); }
+      65% { opacity: 1; transform: rotateY(-10deg) scale(1.15); }
+      100% { opacity: 1; transform: rotateY(0deg) scale(1); }
+    }
+
+    .splash-subtitle {
+      margin-top: var(--space-md);
+      font-family: var(--font-label);
+      font-size: clamp(0.75rem, 1.4vw, 0.92rem);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--silver);
+      clip-path: inset(0 100% 0 0);
+      animation: clipReveal 1.2s var(--ease-in-out) 0.8s forwards;
+    }
+    @keyframes clipReveal {
+      0% { clip-path: inset(0 100% 0 0); opacity: 0.4; }
+      100% { clip-path: inset(0 0 0 0); opacity: 0.95; }
+    }
+
+    .splash-progress-track {
+      margin-top: var(--space-xl);
+      width: min(320px, 80vw);
+      height: 4px;
+      border-radius: var(--rounded-full);
+      background: rgba(200, 209, 224, 0.15);
+      overflow: hidden;
+    }
+    .splash-progress-bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--secondary), var(--primary), var(--tertiary));
+      animation: splashLoad 4.3s linear forwards;
+    }
+    @keyframes splashLoad {
+      from { width: 0%; }
+      to { width: 100%; }
+    }
+
+    .splash-skip-btn {
+      margin-top: var(--space-lg);
+      background: transparent;
+      border: 1px solid rgba(200, 209, 224, 0.25);
+      color: var(--silver);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      padding: var(--space-xs) var(--space-md);
+      border-radius: var(--rounded-full);
+      cursor: pointer;
+      min-height: 36px;
+      transition: background-color var(--dur-micro) ease, color var(--dur-micro) ease;
+    }
+    .splash-skip-btn:hover {
+      background: rgba(56, 189, 248, 0.14);
+      color: #f8fafc;
+    }
+
+    /* App Shell hidden during splash */
+    #app-shell.hidden-during-splash {
+      display: none;
+    }
+
+    /* Layout Container */
+    .app-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: var(--space-md) var(--space-lg) var(--space-2xl);
+    }
+
+    /* Top Header Bar */
+    .top-header {
+      background: var(--panel-gradient);
+      border-bottom: var(--hairline);
+      padding: var(--space-md) var(--space-lg);
+    }
+    .top-header-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--rounded);
+      background: var(--navy-gloss);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #f8fafc;
+      flex-shrink: 0;
+    }
+    .brand-title {
+      font-family: var(--font-headline);
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+      color: var(--on-surface);
+    }
+    .brand-tagline {
+      font-size: 0.78rem;
+      color: var(--on-surface-variant);
+      display: block;
+    }
+
+    .top-nav-bars {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+    .nav-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      min-height: 44px;
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--rounded);
+      border: var(--hairline);
+      background: var(--surface-container-low);
+      color: var(--on-surface-variant);
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: background-color var(--dur-micro) ease, color var(--dur-micro) ease, transform var(--dur-micro) ease, box-shadow var(--dur-micro) ease;
+    }
+    .nav-pill:hover {
+      color: var(--on-surface);
+      background: var(--surface-container-high);
+      transform: translateY(-1px);
+    }
+    .nav-pill.active {
+      background: var(--navy-gloss);
+      color: #f8fafc;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px var(--primary);
+    }
+    .nav-lock-badge {
+      font-family: var(--font-label);
+      font-size: 0.68rem;
+      padding: 2px 6px;
+      border-radius: var(--rounded-full);
+      background: var(--red-tint);
+      color: var(--error);
+    }
+    .nav-live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--tertiary);
+      display: inline-block;
+    }
+
+    .header-utilities {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xs);
+      min-height: 44px;
+      padding: 0.5rem 1rem;
+      border-radius: var(--rounded);
+      border: var(--hairline);
+      background: var(--surface-container-high);
+      color: var(--on-surface);
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: transform var(--dur-micro) ease, background-color var(--dur-micro) ease, box-shadow var(--dur-micro) ease;
+    }
+    .btn:hover { transform: translateY(-2px); background: var(--primary-container); color: var(--on-primary-container); }
+    .btn-primary {
+      background: var(--primary);
+      color: var(--on-primary);
+      border-color: var(--primary);
+    }
+    .btn-primary:hover {
+      background: var(--secondary);
+      color: #f8fafc;
+    }
+    .btn-emerald {
+      background: var(--tertiary);
+      color: #052e16;
+      border-color: var(--tertiary);
+    }
+    .btn-danger {
+      background: var(--red-tint);
+      color: var(--error);
+      border-color: var(--error);
+    }
+    .btn-sm {
+      min-height: 36px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+    }
+
+    /* Cards & Surfaces */
+    .panel {
+      background: var(--panel-gradient);
+      border: var(--hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-lg);
+      box-shadow: var(--card-shadow);
+      position: relative;
+      z-index: 2;
+    }
+    .sub-card {
+      background: var(--surface-container-low);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-md);
+      transition: transform var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+    }
+    .sub-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .section-header-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-bottom: var(--space-md);
+    }
+    .section-title {
+      font-size: var(--headline-size);
+    }
+    .animated-title {
+      background: linear-gradient(110deg, var(--on-surface) 35%, var(--primary) 55%, var(--silver) 75%);
+      background-size: 220% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: titleEntrance 0.65s var(--ease-out) forwards;
+    }
+    @keyframes titleEntrance {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Campaign Bar & Stage Switcher */
+    .campaign-workspace-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-lg);
+      align-items: start;
+      margin-bottom: var(--space-lg);
+    }
+    .campaign-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: var(--space-sm);
+      margin-top: var(--space-md);
+      padding-top: var(--space-md);
+      border-top: var(--hairline);
+    }
+    .summary-cell-label {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--on-surface-variant);
+      display: block;
+      margin-bottom: 2px;
+    }
+    .summary-cell-val {
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: var(--on-surface);
+    }
+
+    .stage-switcher-rail {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+      min-width: 260px;
+    }
+    .stage-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      min-height: 52px;
+      border-radius: var(--rounded);
+      border: var(--hairline);
+      background: var(--surface-container);
+      color: var(--on-surface);
+      text-align: left;
+      cursor: pointer;
+      transition: transform var(--dur-micro) var(--ease-out), background-color var(--dur-micro) ease, box-shadow var(--dur-micro) ease;
+    }
+    .stage-btn:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 0 18px var(--cyan-tint);
+    }
+    .stage-btn.active {
+      background: var(--navy-gloss);
+      color: #f8fafc;
+      border-color: var(--primary);
+    }
+    .stage-btn-sub {
+      font-size: 0.76rem;
+      color: var(--on-surface-variant);
+      display: block;
+    }
+    .stage-btn.active .stage-btn-sub { color: #cbd5e1; }
+
+    /* Grids */
+    .grid-stack {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+    .card-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr));
+      gap: var(--space-md);
+    }
+    .card-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+      gap: var(--space-md);
+    }
+    .pipeline-grid-2x2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-lg);
+    }
+
+    /* Department 2x2 Interactive Cards */
+    .dept-card {
+      position: relative;
+      min-height: 250px;
+      padding: var(--space-lg);
+      border-radius: var(--rounded-lg);
+      background: var(--surface-container-low);
+      border: var(--hairline);
+      overflow: hidden;
+      transition: transform 0.3s var(--ease-out), box-shadow 0.3s ease;
+    }
+    .dept-card:hover {
+      transform: translateY(-5px) scale(1.015);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35), 0 0 22px var(--cyan-tint);
+    }
+    .dept-playhead {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--primary);
+      opacity: 0;
+      transform: translateX(0);
+      pointer-events: none;
+    }
+    .dept-card.offline-edit:hover .dept-playhead {
+      opacity: 0.85;
+      animation: playheadSweep 1.8s linear infinite;
+    }
+    @keyframes playheadSweep {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(460px); }
+    }
+    .dept-card.color-grade::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: var(--lut-gradient);
+      background-size: 300% 300%;
+      animation: colorGradeShift 6s ease infinite;
+      pointer-events: none;
+    }
+    @keyframes colorGradeShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .dept-card.vfx-grid::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, var(--holo-grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--holo-grid) 1px, transparent 1px);
+      background-size: 24px 24px;
+      opacity: 0.4;
+      pointer-events: none;
+      transition: opacity var(--dur-short) ease;
+    }
+    .dept-card.vfx-grid:hover::before { opacity: 0.95; }
+
+    .eq-bars {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 18px;
+      margin-left: var(--space-xs);
+    }
+    .eq-bars span {
+      width: 3px;
+      height: 6px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+    .dept-card.music-sound:hover .eq-bars span:nth-child(1) { animation: eqBounce 0.55s infinite alternate; }
+    .dept-card.music-sound:hover .eq-bars span:nth-child(2) { animation: eqBounce 0.42s 0.1s infinite alternate; }
+    .dept-card.music-sound:hover .eq-bars span:nth-child(3) { animation: eqBounce 0.68s 0.2s infinite alternate; }
+    .dept-card.music-sound:hover .eq-bars span:nth-child(4) { animation: eqBounce 0.48s 0.15s infinite alternate; }
+    @keyframes eqBounce {
+      from { height: 4px; }
+      to { height: 18px; }
+    }
+
+    /* Form Controls */
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+      margin-bottom: var(--space-sm);
+    }
+    .field-label {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--on-surface-variant);
+    }
+    .input, .select, .textarea {
+      width: 100%;
+      min-height: 42px;
+      padding: 0.55rem 0.75rem;
+      border-radius: var(--rounded);
+      border: var(--hairline);
+      background: var(--background);
+      color: var(--on-surface);
+      font-size: 0.9rem;
+    }
+    .select { padding-right: 2rem; }
+    .textarea { min-height: 82px; resize: vertical; }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: var(--rounded-full);
+      font-family: var(--font-label);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .badge-cyan { background: var(--cyan-tint); color: var(--primary); }
+    .badge-emerald { background: var(--emerald-tint); color: var(--tertiary); }
+    .badge-amber { background: var(--amber-tint); color: var(--warning); }
+    .badge-red { background: var(--red-tint); color: var(--error); }
+    .badge-neutral { background: var(--surface-container-high); color: var(--on-surface-variant); }
+
+    /* Dropzone */
+    .doc-dropzone {
+      border: 1.5px dashed var(--outline);
+      border-radius: var(--rounded);
+      padding: var(--space-md);
+      background: var(--surface-container-low);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      transition: border-color var(--dur-micro) ease, background-color var(--dur-micro) ease;
+    }
+    .doc-dropzone.drag-active {
+      border-color: var(--primary);
+      background: var(--cyan-tint);
+    }
+    .doc-dropzone.locked-slot {
+      border-color: var(--error);
+    }
+
+    /* Voice Cue Pulsing Button */
+    .voice-cue-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      min-height: 44px;
+      padding: 0.45rem 0.95rem;
+      border-radius: var(--rounded-full);
+      background: var(--cyan-tint);
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: transform var(--dur-micro) ease;
+    }
+    .voice-cue-btn.speaking {
+      animation: voicePulse 0.75s infinite alternate;
+    }
+    @keyframes voicePulse {
+      from { box-shadow: 0 0 6px var(--cyan-tint); transform: scale(1); }
+      to { box-shadow: 0 0 22px var(--primary); transform: scale(1.04); }
+    }
+
+    /* Stage Transition Overlay & Watermark */
+    #stage-transition-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 8888;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--glass-backdrop);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    #stage-transition-overlay.active { opacity: 1; }
+    .embossed-stage-icon {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--navy-gloss);
+      border: 2px solid var(--primary);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+      color: #f8fafc;
+    }
+    #stage-transition-overlay.active .embossed-stage-icon {
+      animation: hugeEmbossedPop 0.9s var(--ease-out) forwards;
+    }
+    @keyframes hugeEmbossedPop {
+      0% { transform: scale(0.6); opacity: 0; }
+      50% { transform: scale(1.06); opacity: 1; }
+      100% { transform: scale(1.12); opacity: 0; }
+    }
+    .embossed-stage-label {
+      margin-top: var(--space-lg);
+      font-family: var(--font-headline);
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--on-surface);
+    }
+
+    .stage-watermark-bg {
+      position: fixed;
+      right: 2rem;
+      bottom: 1.5rem;
+      width: 280px;
+      height: 280px;
+      opacity: 0.05;
+      pointer-events: none;
+      z-index: 0;
+      color: var(--primary);
+    }
+
+    /* Settings Slide-Over Drawer */
+    #settings-drawer {
+      position: fixed;
+      top: 0;
+      right: -440px;
+      width: min(410px, 100vw);
+      height: 100vh;
+      background: var(--surface-container);
+      border-left: var(--hairline);
+      z-index: 6000;
+      padding: var(--space-lg);
+      overflow-y: auto;
+      transition: right 0.35s var(--ease-out);
+      box-shadow: -12px 0 36px rgba(0, 0, 0, 0.45);
+    }
+    #settings-drawer.open { right: 0; }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 7000;
+      background: var(--glass-backdrop);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-md);
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-dialog {
+      width: min(560px, 100%);
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--surface-container);
+      border: var(--hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-lg);
+      box-shadow: var(--card-shadow);
+    }
+
+    /* Live Edit Suite Layout */
+    .live-suite-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap: var(--space-lg);
+    }
+    .video-stage-box {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      min-height: 240px;
+      background: #05070b;
+      border-radius: var(--rounded);
+      border: var(--hairline);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .video-stage-box video, .video-stage-box canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .chat-feed-box {
+      height: 290px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      padding: var(--space-sm);
+      background: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+    }
+
+    /* Remote Edit Relay Layout */
+    .relay-split-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-lg);
+    }
+    .folder-tree-list {
+      background: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-sm);
+      max-height: 260px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .folder-item-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      width: 100%;
+      min-height: 40px;
+      padding: 0.4rem 0.65rem;
+      border-radius: var(--rounded);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--on-surface);
+      text-align: left;
+      cursor: pointer;
+      font-family: var(--font-label);
+      font-size: 0.8rem;
+    }
+    .folder-item-btn:hover { background: var(--surface-container-high); }
+    .folder-item-btn.selected {
+      background: var(--cyan-tint);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Toast */
+    #toast-banner {
+      position: fixed;
+      bottom: 1.25rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      z-index: 9500;
+      padding: 0.7rem 1.25rem;
+      border-radius: var(--rounded-full);
+      background: var(--navy-gloss);
+      color: #f8fafc;
+      border: 1px solid var(--primary);
+      font-weight: 600;
+      font-size: 0.88rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      box-shadow: var(--card-shadow);
+    }
+    #toast-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Tables */
+    .data-table-wrap { overflow-x: auto; }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .data-table th {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--on-surface-variant);
+      text-align: left;
+      padding: var(--space-sm);
+      border-bottom: var(--hairline);
+    }
+    .data-table td {
+      padding: var(--space-sm);
+      border-bottom: var(--hairline);
+      vertical-align: middle;
+    }
+
+    .hidden { display: none !important; }
+    .row-flex { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+    .row-end { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-sm); }
+    .spacer-top { margin-top: var(--space-md); }
+    .muted-note { font-size: 0.84rem; color: var(--on-surface-variant); }
+
+    @media (max-width: 900px) {
+      .campaign-workspace-bar { grid-template-columns: 1fr; }
+      .stage-switcher-rail { flex-direction: row; flex-wrap: wrap; min-width: 0; }
+      .stage-btn { flex: 1 1 200px; }
+      .pipeline-grid-2x2, .live-suite-layout, .relay-split-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .app-container { padding: var(--space-sm) var(--space-sm) var(--space-xl); }
+      .top-header { padding: var(--space-sm); }
+      .panel { padding: var(--space-md); }
+      .stage-watermark-bg { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-studio-bg" aria-hidden="true"></div>
+  <div id="mouse-halo" aria-hidden="true"></div>
+
+  <!-- 100% OPAQUE SPLASH SCREEN -->
+  <section id="splash-screen" aria-label="Slate and Gate Intro">
+    <canvas id="splash-bg-canvas" aria-hidden="true"></canvas>
+    <div class="splash-inner">
+      <svg class="splash-slate-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <g class="slate-top-arm">
+          <rect x="8" y="12" width="48" height="12" rx="3" fill="currentColor" fill-opacity="0.14" />
+          <line x1="18" y1="12" x2="14" y2="24" />
+          <line x1="30" y1="12" x2="26" y2="24" />
+          <line x1="42" y1="12" x2="38" y2="24" />
+        </g>
+        <rect x="8" y="24" width="48" height="28" rx="4" fill="currentColor" fill-opacity="0.08" />
+        <line x1="16" y1="36" x2="48" y2="36" stroke-opacity="0.5" />
+        <line x1="16" y1="43" x2="36" y2="43" stroke-opacity="0.5" />
+      </svg>
+      <div class="splash-swap-wrap">
+        <span class="swap-word-left">SLATE</span>
+        <span class="swap-word-amp">&amp;</span>
+        <span class="swap-word-right">GATE</span>
+      </div>
+      <p class="splash-subtitle">Dual-View Media Production &amp; Client Isolation Platform</p>
+      <div class="splash-progress-track" aria-hidden="true">
+        <div class="splash-progress-bar"></div>
+      </div>
+      <button type="button" class="splash-skip-btn" onclick="completeSplashNow()">Enter Workspace</button>
+    </div>
+  </section>
+
+  <!-- STAGE CLICK EMBOSSED OVERLAY -->
+  <div id="stage-transition-overlay" aria-hidden="true">
+    <div class="embossed-stage-icon" id="embossed-icon-slot"></div>
+    <div class="embossed-stage-label" id="embossed-stage-title"></div>
+  </div>
+
+  <!-- MAIN APPLICATION SHELL -->
+  <div id="app-shell" class="hidden-during-splash">
+    <header class="top-header" id="internal-header">
+      <div class="top-header-inner">
+        <div class="brand-group">
+          <div class="brand-mark" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 11V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5" />
+              <path d="M4 11h16v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7Z" />
+              <path d="m8 4 2 7M14 4l2 7" />
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">Slate &amp; Gate</div>
+            <span class="brand-tagline">Production Ops &amp; Client Isolation</span>
+          </div>
+        </div>
+
+        <nav class="top-nav-bars" aria-label="Workspace Views">
+          <button type="button" class="nav-pill active" id="nav-internal" onclick="switchTopView('internal')">Internal Operations</button>
+          <button type="button" class="nav-pill" id="nav-relay" onclick="switchTopView('relay')">
+            <span>Remote Edit Relay</span>
+            <span class="nav-lock-badge">INTERNAL ONLY</span>
+          </button>
+          <button type="button" class="nav-pill" id="nav-suite" onclick="switchTopView('suite')">
+            <span class="nav-live-dot" id="header-suite-dot"></span>
+            <span>Live Edit Suite</span>
+          </button>
+          <button type="button" class="nav-pill" id="nav-client" onclick="switchTopView('client')">External Client Gate</button>
+        </nav>
+
+        <div class="header-utilities">
+          <button type="button" class="btn btn-primary btn-sm" onclick="copyIsolatedClientLink()">Copy Client Link</button>
+          <button type="button" class="btn icon-btn" aria-label="Open App Settings" onclick="toggleSettingsDrawer()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.79 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-container">
+      <!-- VIEW 1: INTERNAL OPERATIONS -->
+      <section id="view-internal">
+        <div class="campaign-workspace-bar">
+          <div class="panel">
+            <div class="row-flex" style="justify-content: space-between;">
+              <div style="flex: 1 1 260px;">
+                <label class="field-label" for="global-project-select">Active Campaign / Client Project</label>
+                <select id="global-project-select" class="select" onchange="selectActiveProject(this.value)"></select>
+              </div>
+              <button type="button" class="btn btn-primary" onclick="openAddProjectModal()">+ Add Project</button>
+            </div>
+            <div class="campaign-strip" id="project-summary-strip"></div>
+          </div>
+
+          <aside class="stage-switcher-rail" aria-label="Production Stages">
+            <button type="button" class="stage-btn active" id="stage-btn-pre" onclick="switchStage('pre')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="9" y1="4" x2="9" y2="10" />
+              </svg>
+              <div>
+                <strong>Pre-Production Hub</strong>
+                <span class="stage-btn-sub">Planning &amp; Logistics</span>
+              </div>
+            </button>
+            <button type="button" class="stage-btn" id="stage-btn-prod" onclick="switchStage('prod')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" />
+              </svg>
+              <div>
+                <strong>Production &amp; Audio</strong>
+                <span class="stage-btn-sub">On-Set &amp; Voicing</span>
+              </div>
+            </button>
+            <button type="button" class="stage-btn" id="stage-btn-post" onclick="switchStage('post')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
+              </svg>
+              <div>
+                <strong>Post-Production Engine</strong>
+                <span class="stage-btn-sub">Pipeline &amp; Client Sync</span>
+              </div>
+            </button>
+          </aside>
+        </div>
+
+        <!-- STAGE: PRE-PRODUCTION HUB -->
+        <div id="stage-panel-pre" class="grid-stack"></div>
+
+        <!-- STAGE: PRODUCTION & AUDIO -->
+        <div id="stage-panel-prod" class="grid-stack hidden"></div>
+
+        <!-- STAGE: POST-PRODUCTION ENGINE -->
+        <div id="stage-panel-post" class="grid-stack hidden"></div>
+      </section>
+
+      <!-- INNOVATION 1: REMOTE EDIT RELAY -->
+      <section id="view-relay" class="hidden"></section>
+
+      <!-- INNOVATION 2: LIVE EDIT SUITE -->
+      <section id="view-suite" class="hidden"></section>
+
+      <!-- VIEW 2: EXTERNAL CLIENT GATE -->
+      <section id="view-client" class="hidden"></section>
+    </main>
+
+    <div class="stage-watermark-bg" id="stage-watermark" aria-hidden="true"></div>
+  </div>
+
+  <!-- SLIDE-OVER SETTINGS & POLICY DRAWER -->
+  <aside id="settings-drawer" aria-label="App Settings and Policies">
+    <div class="section-header-row">
+      <h3>App Settings &amp; Policies</h3>
+      <button type="button" class="btn btn-sm" onclick="toggleSettingsDrawer()">Close</button>
+    </div>
+
+    <div class="sub-card spacer-top">
+      <span class="summary-cell-label">Appearance &amp; Theme Mode</span>
+      <div class="row-flex spacer-top">
+        <button type="button" class="btn btn-sm" id="theme-dark-btn" onclick="setAppTheme('dark')">Dark Studio Mode</button>
+        <button type="button" class="btn btn-sm" id="theme-light-btn" onclick="setAppTheme('light')">Light Studio Mode</button>
+      </div>
+    </div>
+
+    <div class="sub-card spacer-top">
+      <span class="summary-cell-label">Motion &amp; Audio Accessibility</span>
+      <div class="field-group spacer-top">
+        <label class="row-flex" style="cursor: pointer;">
+          <input type="checkbox" id="toggle-halo" checked onchange="updatePreference('halo', this.checked)">
+          <span>Mouse-Tracking Ambient Halo</span>
+        </label>
+        <label class="row-flex" style="cursor: pointer;">
+          <input type="checkbox" id="toggle-embossed" checked onchange="updatePreference('embossedStage', this.checked)">
+          <span>Embossed Stage-Click Animations</span>
+        </label>
+        <label class="row-flex" style="cursor: pointer;">
+          <input type="checkbox" id="toggle-voice-cue" checked onchange="updatePreference('voiceCue', this.checked)">
+          <span>Live Studio Voice Cue ("Add voice artist here")</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="sub-card spacer-top">
+      <span class="summary-cell-label">Security, Access &amp; Isolation Policies</span>
+      <div class="grid-stack spacer-top" style="gap: 0.65rem;">
+        <div>
+          <div class="row-flex" style="justify-content: space-between;">
+            <strong>Per-Project Client Link Isolation</strong>
+            <span class="badge badge-emerald">ENFORCED</span>
+          </div>
+          <p class="muted-note">Project links grant access exclusively to that project with zero cross-project visibility.</p>
+        </div>
+        <div>
+          <div class="row-flex" style="justify-content: space-between;">
+            <strong>Internal Budget Sheet Lock</strong>
+            <span class="badge badge-red">ENFORCED</span>
+          </div>
+          <p class="muted-note">Budget breakdown sheets remain hidden from Editor Reference Docs and External Client Gate.</p>
+        </div>
+        <div>
+          <div class="row-flex" style="justify-content: space-between;">
+            <strong>Remote Edit Relay Restriction</strong>
+            <span class="badge badge-red">INTERNAL ONLY</span>
+          </div>
+          <p class="muted-note">Remote directory pairing is locked strictly to internal editors and office staff.</p>
+        </div>
+        <div>
+          <div class="row-flex" style="justify-content: space-between;">
+            <strong>Live Edit Suite Client Policy</strong>
+            <span class="badge badge-cyan">VIEW-ONLY · ZERO PC CONTROL</span>
+          </div>
+          <p class="muted-note">Clients can watch, speak, chat, and drop reference links without keyboard, mouse, or file control.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-card spacer-top">
+      <span class="summary-cell-label">Workspace Data &amp; PWA Readiness</span>
+      <div class="row-flex spacer-top">
+        <button type="button" class="btn btn-primary btn-sm" onclick="exportWorkspaceJson()">Export JSON Backup</button>
+        <button type="button" class="btn btn-sm" onclick="triggerImportJson()">Import JSON Data</button>
+        <input type="file" id="import-json-input" accept=".json" hidden onchange="handleImportJson(event)">
+        <input type="file" id="upload-client-cut-video" accept="video/mp4,video/quicktime,video/webm" hidden onchange="handleMasterVideoSelect(event)">
+        <input type="file" id="relay-folder-fallback" webkitdirectory multiple hidden onchange="handleFallbackFolderSelect(event)">
+      </div>
+      <div class="row-flex spacer-top">
+        <button type="button" class="btn btn-danger btn-sm" id="reset-workspace-btn" onclick="resetDemoWorkspace(this)">Reset Demo Data</button>
+      </div>
+      <p class="muted-note spacer-top" id="pwa-status-text">Responsive PWA-ready shell active.</p>
+    </div>
+  </aside>
+
+  <!-- ADD PROJECT MODAL -->
+  <div class="modal-backdrop" id="add-project-modal" role="dialog" aria-modal="true" aria-labelledby="add-project-modal-title">
+    <div class="modal-dialog">
+      <div class="section-header-row">
+        <h3 id="add-project-modal-title">Create New Campaign / Project</h3>
+        <button type="button" class="btn btn-sm" onclick="closeModal('add-project-modal')">Close</button>
+      </div>
+      <form onsubmit="submitNewProject(event)">
+        <div class="field-group">
+          <label class="field-label" for="np-name">Campaign / Project Name</label>
+          <input class="input" id="np-name" required placeholder="e.g. Zenith Electric SUV — Launch Film">
+        </div>
+        <div class="card-grid-2">
+          <div class="field-group">
+            <label class="field-label" for="np-client">Client Name</label>
+            <input class="input" id="np-client" required placeholder="e.g. Zenith Motors">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="np-agency">Agency Name</label>
+            <input class="input" id="np-agency" required placeholder="e.g. Apex Creative">
+          </div>
+        </div>
+        <div class="card-grid-2">
+          <div class="field-group">
+            <label class="field-label" for="np-type">Format / Type</label>
+            <select class="select" id="np-type">
+              <option value="TV Commercial">TV Commercial</option>
+              <option value="Social Campaign">Social Campaign</option>
+              <option value="Corporate Film">Corporate Film</option>
+              <option value="Brand Anthem">Brand Anthem</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="np-duration">Duration</label>
+            <input class="input" id="np-duration" value="30 sec">
+          </div>
+        </div>
+        <div class="card-grid-3">
+          <div class="field-group">
+            <label class="field-label" for="np-shoot">Shoot Date</label>
+            <input class="input" type="date" id="np-shoot" value="2026-12-04">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="np-agency-date">Agency Preview</label>
+            <input class="input" type="date" id="np-agency-date" value="2026-12-10">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="np-client-date">Client Preview</label>
+            <input class="input" type="date" id="np-client-date" value="2026-12-14">
+          </div>
+        </div>
+        <div class="row-flex spacer-top" style="justify-content: flex-end;">
+          <button type="button" class="btn" onclick="closeModal('add-project-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- DOCUMENT / CUT PREVIEW MODAL -->
+  <div class="modal-backdrop" id="preview-modal" role="dialog" aria-modal="true" aria-labelledby="preview-modal-title">
+    <div class="modal-dialog">
+      <div class="section-header-row">
+        <h3 id="preview-modal-title">Document Preview</h3>
+        <button type="button" class="btn btn-sm" onclick="closeModal('preview-modal')">Close</button>
+      </div>
+      <div id="preview-modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast-banner" role="status" aria-live="polite"></div>
+
+  <api-shim></api-shim>
+  <script>
+    const STAGE_SVGS = {
+      pre: `<svg viewBox="0 0 64 64" width="110" height="110" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="10" y="12" width="44" height="40" rx="4"/><line x1="10" y1="24" x2="54" y2="24"/><line x1="22" y1="12" x2="18" y2="24"/><line x1="36" y1="12" x2="32" y2="24"/><rect x="18" y="31" width="28" height="14" rx="2"/></svg>`,
+      prod: `<svg viewBox="0 0 64 64" width="110" height="110" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="8" y="18" width="34" height="28" rx="4"/><polygon points="42,26 56,18 56,46 42,38"/><circle cx="25" cy="32" r="7"/></svg>`,
+      post: `<svg viewBox="0 0 64 64" width="110" height="110" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="10" y1="20" x2="54" y2="20"/><line x1="10" y1="32" x2="54" y2="32"/><line x1="10" y1="44" x2="54" y2="44"/><circle cx="26" cy="20" r="4" fill="currentColor"/><circle cx="42" cy="32" r="4" fill="currentColor"/><circle cx="20" cy="44" r="4" fill="currentColor"/></svg>`
+    };
+
+    const WEATHER_CITIES = {
+      colombo: { label: `Colombo, LK`, baseTemp: 30, rainBase: 22, wind: 14, sky: `Partly Cloudy` },
+      galle: { label: `Galle Fort, LK`, baseTemp: 29, rainBase: 38, wind: 19, sky: `Coastal Breeze` },
+      kandy: { label: `Kandy Hills, LK`, baseTemp: 25, rainBase: 64, wind: 11, sky: `Monsoon Showers Likely` },
+      dubai: { label: `Dubai Studio City, AE`, baseTemp: 31, rainBase: 4, wind: 16, sky: `Clear Sun` },
+      london: { label: `Soho London, UK`, baseTemp: 13, rainBase: 48, wind: 21, sky: `Overcast` },
+      singapore: { label: `Singapore, SG`, baseTemp: 31, rainBase: 55, wind: 12, sky: `Tropical Humid` },
+      losangeles: { label: `Burbank LA, US`, baseTemp: 23, rainBase: 8, wind: 10, sky: `Golden Clear` }
+    };
+
+    const RELAY_SAMPLE_FILES = [
+      { path: `01_Ingest/A001_CamA_4K.mov`, name: `A001_CamA_4K.mov`, size: `4.2 GB`, kind: `file`, folder: `01_Ingest` },
+      { path: `02_Offline/Aura_TVC_Offline_V2.prproj`, name: `Aura_TVC_Offline_V2.prproj`, size: `84 MB`, kind: `file`, folder: `02_Offline` },
+      { path: `03_Audio/Aura_VO_Master_Mix.wav`, name: `Aura_VO_Master_Mix.wav`, size: `142 MB`, kind: `file`, folder: `03_Audio` },
+      { path: `04_Exports/Aura_Preview_Cut_V3.mp4`, name: `Aura_Preview_Cut_V3.mp4`, size: `310 MB`, kind: `file`, folder: `04_Exports` },
+      { path: `04_Exports/Aura_Final_Master_ProRes.mov`, name: `Aura_Final_Master_ProRes.mov`, size: `2.1 GB`, kind: `file`, folder: `04_Exports` }
+    ];
+
+    function buildDefaultState() {
+      return {
+        activeProjectId: `proj_001`,
+        activeTopView: `internal`,
+        activeStage: `pre`,
+        strictClientPreviewMode: false,
+        settings: {
+          theme: `dark`,
+          halo: true,
+          embossedStage: true,
+          voiceCue: true
+        },
+        cateringDirectory: [
+          { id: `cat_1`, vendor: `Emerald Set Kitchen`, contact: `Ruwan Perera`, phone: `+94 77 412 8890`, email: `bookings@emeraldkitchen.example.com`, projects: `Aura Luxury Tea TVC` },
+          { id: `cat_2`, vendor: `Studio Craft Table`, contact: `Maya Silva`, phone: `+94 71 903 2211`, email: `craft@studiotable.example.com`, projects: `Nova Bank Social Campaign` }
+        ],
+        relay: {
+          pairingCode: `SG-492-817`,
+          hostProjectId: `proj_001`,
+          hostMountedFolder: `D:/Projects/Aura_TVC`,
+          files: RELAY_SAMPLE_FILES.map(f => ({ ...f })),
+          selectedFilePath: `04_Exports/Aura_Preview_Cut_V3.mp4`,
+          destinationGate: `external-client-gate`,
+          demoSplitMode: true,
+          logs: [
+            { time: `10:14`, msg: `Host initialized session SG-492-817 for Aura Luxury Tea TVC.` }
+          ]
+        },
+        liveSuite: {
+          active: false,
+          projectId: `proj_001`,
+          screenSharing: false,
+          editorMicOn: true,
+          guestMicOn: false,
+          streamPaused: false,
+          participants: [
+            { name: `Kasun Jayawardena`, role: `Editor (Host)`, status: `Live` },
+            { name: `Dilini Fernando`, role: `Brand Lead (Client)`, status: `View-Only` },
+            { name: `Rohan De Silva`, role: `Account Director (Agency)`, status: `View-Only` }
+          ],
+          messages: [
+            { time: `14:02`, author: `Kasun Jayawardena`, role: `Editor`, text: `Timeline ready for the 30s tea pour grade check.`, refLink: `` },
+            { time: `14:04`, author: `Dilini Fernando`, role: `Client`, text: `Can we warm the golden rim light at 00:12 slightly?`, refLink: `example.com/ref/golden-tea-grade` }
+          ]
+        },
+        projects: [
+          {
+            id: `proj_001`,
+            name: `Aura Luxury Tea — 30s TVC`,
+            client: `Aura Beverages Ltd.`,
+            agency: `Apex Creative`,
+            type: `TV Commercial`,
+            duration: `30 sec`,
+            milestones: {
+              agencyPreviewDate: `2026-12-05`,
+              clientPreviewDate: `2026-12-09`,
+              shootDays: [
+                { id: `sd_1`, day: 1, date: `2026-11-28`, location: `Colombo`, notes: `Studio Tabletop & Hero Pour Shots`, weather: { city: `Colombo, LK`, temp: 30, rain: 22, wind: 14, sky: `Partly Cloudy`, badge: `Optimal for Shoot` } },
+                { id: `sd_2`, day: 2, date: `2026-11-29`, location: `Kandy`, notes: `Tea Estate Misty Sunrise Exterior`, weather: { city: `Kandy Hills, LK`, temp: 25, rain: 64, wind: 11, sky: `Monsoon Showers Likely`, badge: `High Rain Risk — Backup Needed` } }
+              ]
+            },
+            documents: {
+              avBrief: { name: `Aura_AV_Brief_Final.pdf`, sizeKB: `640`, kind: `pdf`, url: `example.com/docs/aura-av-brief`, updated: `2026-11-20` },
+              script: { name: `Aura_30s_Master_Script.docx`, sizeKB: `185`, kind: `docx`, url: `example.com/docs/aura-script`, updated: `2026-11-21` },
+              storyboard: { name: `Aura_Storyboard_Frames.pdf`, sizeKB: `2420`, kind: `pdf`, url: `example.com/docs/aura-storyboard`, updated: `2026-11-21` },
+              moodBoard: { name: `Aura_Warm_Gold_Moodboard.jpg`, sizeKB: `1120`, kind: `image`, url: `example.com/docs/aura-moodboard`, updated: `2026-11-22` },
+              shotList: { name: `Aura_Master_ShotList.pdf`, sizeKB: `410`, kind: `pdf`, url: `example.com/docs/aura-shotlist`, updated: `2026-11-22` },
+              budgetSheetInternalOnly: { name: `INTERNAL_Aura_Budget_Breakdown.pdf`, sizeKB: `390`, kind: `pdf`, url: `example.com/internal/aura-budget`, locked: true, updated: `2026-11-22` }
+            },
+            locations: [
+              { id: `loc_1`, name: `Horizon Daylight Stage B`, area: `Colombo 07`, status: `Locked`, album: `example.com/albums/stage-b`, notes: `High-speed Phantom rig power confirmed.` },
+              { id: `loc_2`, name: `Highland Crest Tea Estate`, area: `Nuwara Eliya`, status: `Approved`, album: `example.com/albums/tea-estate`, notes: `Backup pavilion tent booked.` }
+            ],
+            crew: [
+              { id: `cr_1`, role: `Director`, name: `Sahan Mendis`, contact: `+94 77 100 4411`, callTime: `06:00 AM` },
+              { id: `cr_2`, role: `DOP`, name: `Tharindu Senanayake`, contact: `+94 77 204 8812`, callTime: `06:00 AM` },
+              { id: `cr_3`, role: `1st AD`, name: `Amaya Rodrigo`, contact: `+94 71 552 3309`, callTime: `05:30 AM` }
+            ],
+            voiceOvers: [
+              { id: `vo_1`, character: `Brand Narrator`, voiceType: `Female`, language: `English`, artist: `Natasha Gooneratne`, studio: `SoundCraft Studio A`, date: `2026-12-01`, status: `Recorded`, rate: `$280`, payment: `Paid` },
+              { id: `vo_2`, character: `Tagline Voice`, voiceType: `Male`, language: `Sinhala`, artist: `Chamara Wickrama`, studio: `SoundCraft Studio A`, date: `2026-12-02`, status: `Scheduled`, rate: `$220`, payment: `Pending` }
+            ],
+            postProduction: {
+              backup: { driveName: `LACIE_4TB_AURA_01`, capacity: `4 TB NVMe RAID`, location: `Edit Bay 01 Vault`, status: `Dual Backup Verified` },
+              streams: {
+                offline: { assignee: `Kasun J.`, startDate: `2026-11-30`, progress: 85, handoverDate: `2026-12-03`, sentToColor: true },
+                color: { assignee: `Nimal K.`, status: `In Progress`, days: 2 },
+                music: { assignee: `Dilshan R.`, handedOver: true, status: `In Progress`, completionDate: `2026-12-04`, revisions: 1 },
+                vfx: { assignee: `PixelLab FX`, category: `Supers & 3D CG`, status: `Review`, corrections: 2 }
+              },
+              reviews: {
+                offline: [
+                  { id: `rev_o1`, version: `Cut V1.0`, rounds: 1, reason: `Internal Feedback`, notes: `Tightened tea pour macro transition by 12 frames.`, approved: true }
+                ],
+                director: [
+                  { id: `rev_d1`, version: `Cut V1.1`, rounds: 1, reason: `Director Review`, notes: `Approved hero bottle packshot angle.`, approved: true }
+                ],
+                internal: [
+                  { id: `rev_i1`, version: `Cut V1.2`, rounds: 2, reason: `Internal Feedback`, notes: `Checked supers kerning and audio ducking.`, approved: true }
+                ],
+                agency: [
+                  { id: `rev_a1`, version: `Agency Cut V2`, rounds: 1, reason: `Agency Feedback`, turnaround: `18 hrs left`, timecode: `00:14`, assignTo: `Colorist`, notes: `Lift gold highlights on cup rim.`, approved: false }
+                ],
+                client: [
+                  { id: `rev_c1`, version: `Preview Cut V2`, rounds: 1, reason: `Client Feedback`, notes: `Awaiting brand manager sign-off.`, status: `Ready for Re-upload` }
+                ]
+              },
+              clientSync: {
+                curatedStatus: `Preview Ready for Review`,
+                previewVersion: `Preview Cut V2`,
+                previewSource: `Studio Commercial Preview Engine`,
+                masterReleaseLink: `example.com/masters/Aura_Luxury_Tea_Master_Package.zip`,
+                masterUnlocked: false
+              }
+            },
+            clientFeedback: [
+              { id: `cf_1`, author: `Dilini Fernando`, role: `Brand Manager`, timecode: `00:14`, comment: `Love the macro pour pacing; please brighten the packshot gold foil slightly.`, decision: `Request Changes`, time: `2026-12-05 11:20` }
+            ]
+          },
+          {
+            id: `proj_002`,
+            name: `Nova Bank — Digital Pay Social`,
+            client: `Nova Commercial Bank`,
+            agency: `Spark & Co.`,
+            type: `Social Campaign`,
+            duration: `15 sec`,
+            milestones: {
+              agencyPreviewDate: `2026-12-08`,
+              clientPreviewDate: `2026-12-12`,
+              shootDays: [
+                { id: `sd_3`, day: 1, date: `2026-12-01`, location: `Dubai`, notes: `Fintech Cafe Lifestyle Tap Sequence`, weather: { city: `Dubai Studio City, AE`, temp: 31, rain: 4, wind: 16, sky: `Clear Sun`, badge: `Optimal for Shoot` } }
+              ]
+            },
+            documents: {
+              avBrief: { name: `NovaPay_15s_Brief.pdf`, sizeKB: `510`, kind: `pdf`, url: `example.com/docs/novapay-brief`, updated: `2026-11-22` },
+              script: null,
+              storyboard: null,
+              moodBoard: null,
+              shotList: null,
+              budgetSheetInternalOnly: { name: `INTERNAL_Nova_Estimate.pdf`, sizeKB: `290`, kind: `pdf`, url: `example.com/internal/nova-budget`, locked: true, updated: `2026-11-22` }
+            },
+            locations: [
+              { id: `loc_3`, name: `Metro Roastery Cafe`, area: `DIFC District`, status: `Shortlisted`, album: `example.com/albums/metro-cafe`, notes: `Morning light window corner.` }
+            ],
+            crew: [
+              { id: `cr_4`, role: `Director`, name: `Rayan Al-Mansoor`, contact: `+971 50 412 0019`, callTime: `07:30 AM` }
+            ],
+            voiceOvers: [
+              { id: `vo_3`, character: `Lead VO`, voiceType: `Male`, language: `English`, artist: `Tariq Zayd`, studio: `Pulse Audio Hub`, date: `2026-12-04`, status: `Scheduled`, rate: `$240`, payment: `Processing` }
+            ],
+            postProduction: {
+              backup: { driveName: `SAMSUNG_T7_NOVA_02`, capacity: `2 TB SSD`, location: `Edit Bay 02`, status: `Primary Ingested` },
+              streams: {
+                offline: { assignee: `Malith P.`, startDate: `2026-12-02`, progress: 45, handoverDate: `2026-12-06`, sentToColor: false },
+                color: { assignee: `Nimal K.`, status: `Awaiting Offline`, days: 0 },
+                music: { assignee: `EchoLab`, handedOver: false, status: `Awaiting Offline`, completionDate: `2026-12-07`, revisions: 0 },
+                vfx: { assignee: `MotionGrid`, category: `Supers`, status: `In Progress`, corrections: 1 }
+              },
+              reviews: {
+                offline: [],
+                director: [],
+                internal: [],
+                agency: [],
+                client: []
+              },
+              clientSync: {
+                curatedStatus: `Post-Production in Progress`,
+                previewVersion: `Cut V1.0`,
+                previewSource: `Studio Commercial Preview Engine`,
+                masterReleaseLink: `example.com/masters/NovaPay_Social_Masters.zip`,
+                masterUnlocked: true
+              }
+            },
+            clientFeedback: []
+          }
+        ]
+      };
+    }
+
+    let appState = buildDefaultState();
+    const sessionBlobMap = {};
+    let relayChannel = null;
+    try {
+      relayChannel = new BroadcastChannel(`slate_gate_remote_relay`);
+    } catch (e) {
+      relayChannel = null;
+    }
+
+    let haloX = window.innerWidth / 2;
+    let haloY = window.innerHeight / 2;
+    let targetX = haloX;
+    let targetY = haloY;
+    let previewAnimId = null;
+    let previewPlaying = true;
+    let previewProgress = 0.28;
+    let splashCompleted = false;
+    let isStrictUrlClientMode = false;
+
+    function getActiveProject() {
+      const found = appState.projects.find(p => p.id === appState.activeProjectId);
+      return found || appState.projects[0];
+    }
+
+    function escapeHtml(str) {
+      return String(str == null ? `` : str)
+        .replace(/&/g, `&amp;`)
+        .replace(/</g, `&lt;`)
+        .replace(/>/g, `&gt;`)
+        .replace(/"/g, `&quot;`)
+        .replace(/'/g, `&#39;`);
+    }
+
+    async function persistState() {
+      try {
+        if (window.notebookAppApi && typeof window.notebookAppApi.setAppState === `function`) {
+          await window.notebookAppApi.setAppState(appState);
+        }
+      } catch (err) {
+        // Ignore transient serialization errors
+      }
+    }
+
+    function showToast(message) {
+      const el = document.getElementById(`toast-banner`);
+      if (!el) return;
+      el.textContent = message;
+      el.classList.add(`show`);
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => {
+        el.classList.remove(`show`);
+      }, 2800);
+    }
+
+    function applyThemeAndPreferences() {
+      const theme = appState.settings?.theme || `dark`;
+      document.documentElement.setAttribute(`data-theme`, theme);
+      const darkBtn = document.getElementById(`theme-dark-btn`);
+      const lightBtn = document.getElementById(`theme-light-btn`);
+      if (darkBtn) darkBtn.classList.toggle(`btn-primary`, theme === `dark`);
+      if (lightBtn) lightBtn.classList.toggle(`btn-primary`, theme === `light`);
+
+      const haloOn = appState.settings?.halo !== false;
+      document.body.classList.toggle(`no-halo`, !haloOn);
+      const toggleHalo = document.getElementById(`toggle-halo`);
+      if (toggleHalo) toggleHalo.checked = haloOn;
+
+      const toggleEmb = document.getElementById(`toggle-embossed`);
+      if (toggleEmb) toggleEmb.checked = appState.settings?.embossedStage !== false;
+
+      const toggleVoice = document.getElementById(`toggle-voice-cue`);
+      if (toggleVoice) toggleVoice.checked = appState.settings?.voiceCue !== false;
+    }
+
+    function setAppTheme(mode) {
+      appState.settings.theme = mode;
+      applyThemeAndPreferences();
+      persistState();
+      showToast(mode === `dark` ? `Dark Studio Mode enabled` : `Light Studio Mode enabled`);
+    }
+
+    function updatePreference(key, val) {
+      appState.settings[key] = Boolean(val);
+      applyThemeAndPreferences();
+      persistState();
+    }
+
+    function toggleSettingsDrawer() {
+      const drawer = document.getElementById(`settings-drawer`);
+      if (drawer) drawer.classList.toggle(`open`);
+    }
+
+    function initMouseHalo() {
+      window.addEventListener(`mousemove`, (e) => {
+        targetX = e.clientX;
+        targetY = e.clientY;
+      });
+      const halo = document.getElementById(`mouse-halo`);
+      function step() {
+        haloX += (targetX - haloX) * 0.14;
+        haloY += (targetY - haloY) * 0.14;
+        if (halo) {
+          halo.style.left = `${haloX}px`;
+          halo.style.top = `${haloY}px`;
+        }
+        requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function initSplashCanvas() {
+      const canvas = document.getElementById(`splash-bg-canvas`);
+      if (!canvas) return;
+      const ctx = canvas.getContext(`2d`);
+      if (!ctx) return;
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener(`resize`, resize);
+
+      const particles = Array.from({ length: 55 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 2 + 0.6,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        alpha: Math.random() * 0.45 + 0.2
+      }));
+
+      function draw() {
+        if (splashCompleted) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const p of particles) {
+          p.x = (p.x + p.vx + canvas.width) % canvas.width;
+          p.y = (p.y + p.vy + canvas.height) % canvas.height;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(200, 209, 224, ${p.alpha})`;
+          ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      }
+      requestAnimationFrame(draw);
+    }
+
+    function completeSplashNow() {
+      if (splashCompleted) return;
+      splashCompleted = true;
+      const splash = document.getElementById(`splash-screen`);
+      const shell = document.getElementById(`app-shell`);
+      if (splash) {
+        splash.classList.add(`splash-exit`);
+        setTimeout(() => {
+          splash.style.display = `none`;
+        }, 620);
+      }
+      if (shell) shell.classList.remove(`hidden-during-splash`);
+    }
+
+    function runSplashSequence() {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get(`mode`);
+      const projectId = params.get(`project`);
+
+      if (mode === `client` && projectId) {
+        isStrictUrlClientMode = true;
+        const found = appState.projects.find(p => p.id === projectId);
+        if (found) appState.activeProjectId = found.id;
+        splashCompleted = true;
+        document.getElementById(`splash-screen`)?.remove();
+        document.getElementById(`internal-header`)?.remove();
+        document.getElementById(`view-internal`)?.remove();
+        document.getElementById(`view-relay`)?.remove();
+        document.getElementById(`view-suite`)?.remove();
+        const shell = document.getElementById(`app-shell`);
+        if (shell) shell.classList.remove(`hidden-during-splash`);
+        appState.activeTopView = `client`;
+        renderClientGate();
+        return;
+      }
+
+      initSplashCanvas();
+      setTimeout(() => {
+        completeSplashNow();
+      }, 4500);
+    }
+
+    function switchTopView(viewKey) {
+      appState.activeTopView = viewKey;
+      persistState();
+      renderTopNavigation();
+      renderActiveView();
+    }
+
+    function renderTopNavigation() {
+      const keys = [`internal`, `relay`, `suite`, `client`];
+      for (const k of keys) {
+        const btn = document.getElementById(`nav-${k}`);
+        const sec = document.getElementById(`view-${k}`);
+        if (btn) btn.classList.toggle(`active`, appState.activeTopView === k);
+        if (sec) sec.classList.toggle(`hidden`, appState.activeTopView !== k);
+      }
+      const dot = document.getElementById(`header-suite-dot`);
+      if (dot) {
+        dot.style.background = appState.liveSuite.active ? `var(--tertiary)` : `var(--outline)`;
+      }
+    }
+
+    function renderActiveView() {
+      if (appState.activeTopView === `internal`) renderInternalOperations();
+      else if (appState.activeTopView === `relay`) renderRemoteEditRelay();
+      else if (appState.activeTopView === `suite`) renderLiveEditSuite();
+      else renderClientGate();
+    }
+
+    function selectActiveProject(id) {
+      appState.activeProjectId = id;
+      persistState();
+      renderActiveView();
+      showToast(`Switched to ${getActiveProject().name}`);
+    }
+
+    function openAddProjectModal() {
+      const m = document.getElementById(`add-project-modal`);
+      if (m) m.classList.add(`open`);
+    }
+
+    function closeModal(id) {
+      const m = document.getElementById(id);
+      if (m) m.classList.remove(`open`);
+    }
+
+    function submitNewProject(e) {
+      e.preventDefault();
+      const name = document.getElementById(`np-name`)?.value.trim();
+      const client = document.getElementById(`np-client`)?.value.trim();
+      const agency = document.getElementById(`np-agency`)?.value.trim();
+      const type = document.getElementById(`np-type`)?.value || `TV Commercial`;
+      const duration = document.getElementById(`np-duration`)?.value.trim() || `30 sec`;
+      const shootDate = document.getElementById(`np-shoot`)?.value || `2026-12-04`;
+      const agencyDate = document.getElementById(`np-agency-date`)?.value || `2026-12-10`;
+      const clientDate = document.getElementById(`np-client-date`)?.value || `2026-12-14`;
+      if (!name) return;
+
+      const newId = `proj_${Date.now().toString(36)}`;
+      appState.projects.push({
+        id: newId,
+        name,
+        client: client || `Client Partner`,
+        agency: agency || `Creative Agency`,
+        type,
+        duration,
+        milestones: {
+          agencyPreviewDate: agencyDate,
+          clientPreviewDate: clientDate,
+          shootDays: [
+            { id: `sd_${Date.now()}`, day: 1, date: shootDate, location: `Colombo`, notes: `Primary Studio Shoot`, weather: { city: `Colombo, LK`, temp: 30, rain: 20, wind: 13, sky: `Partly Cloudy`, badge: `Optimal for Shoot` } }
+          ]
+        },
+        documents: {
+          avBrief: null, script: null, storyboard: null, moodBoard: null, shotList: null,
+          budgetSheetInternalOnly: { name: ``, sizeKB: `0`, kind: `pdf`, url: ``, locked: true, updated: `` }
+        },
+        locations: [],
+        crew: [],
+        voiceOvers: [],
+        postProduction: {
+          backup: { driveName: `DRIVE_${newId.toUpperCase()}`, capacity: `4 TB`, location: `Vault Bay`, status: `Pending` },
+          streams: {
+            offline: { assignee: `Assigned Editor`, startDate: shootDate, progress: 10, handoverDate: agencyDate, sentToColor: false },
+            color: { assignee: `Lead Colorist`, status: `Awaiting Offline`, days: 0 },
+            music: { assignee: `Sound Studio`, handedOver: false, status: `Awaiting Offline`, completionDate: agencyDate, revisions: 0 },
+            vfx: { assignee: `Motion Team`, category: `Supers & VFX`, status: `In Progress`, corrections: 0 }
+          },
+          reviews: { offline: [], director: [], internal: [], agency: [], client: [] },
+          clientSync: {
+            curatedStatus: `In Production`,
+            previewVersion: `Cut V1.0`,
+            previewSource: `Studio Commercial Preview Engine`,
+            masterReleaseLink: `example.com/masters/${newId}.zip`,
+            masterUnlocked: false
+          }
+        },
+        clientFeedback: []
+      });
+
+      appState.activeProjectId = newId;
+      persistState();
+      closeModal(`add-project-modal`);
+      const form = document.querySelector(`#add-project-modal form`);
+      if (form) form.reset();
+      renderActiveView();
+      showToast(`Created project: ${name}`);
+    }
+
+    function copyIsolatedClientLink(specificId) {
+      const pid = specificId || getActiveProject().id;
+      const proj = appState.projects.find(p => p.id === pid) || getActiveProject();
+      const base = window.location.href.split(`?`)[0].split(`#`)[0];
+      const url = `${base}?mode=client&project=${encodeURIComponent(proj.id)}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).catch(() => {});
+      }
+      showToast(`Isolated Client Link Copied for ${proj.name}`);
+    }
+
+    function switchStage(stageKey) {
+      const stageMeta = {
+        pre: { title: `Pre-Production Hub`, sub: `Planning, Scripts & Logistics` },
+        prod: { title: `Production & Audio`, sub: `On-Set Shoot & Studio Voicing` },
+        post: { title: `Post-Production Engine`, sub: `Editing Pipeline & Client Sync` }
+      };
+
+      const activate = () => {
+        appState.activeStage = stageKey;
+        persistState();
+        renderInternalOperations();
+      };
+
+      if (appState.settings?.embossedStage !== false) {
+        const overlay = document.getElementById(`stage-transition-overlay`);
+        const iconSlot = document.getElementById(`embossed-icon-slot`);
+        const titleSlot = document.getElementById(`embossed-stage-title`);
+        if (overlay && iconSlot && titleSlot && stageMeta[stageKey]) {
+          iconSlot.innerHTML = STAGE_SVGS[stageKey];
+          titleSlot.textContent = `${stageMeta[stageKey].title} — ${stageMeta[stageKey].sub}`;
+          overlay.classList.remove(`active`);
+          void overlay.offsetWidth;
+          overlay.classList.add(`active`);
+          setTimeout(activate, 260);
+          setTimeout(() => overlay.classList.remove(`active`), 900);
+          return;
+        }
+      }
+      activate();
+    }
+
+    function renderInternalOperations() {
+      const sel = document.getElementById(`global-project-select`);
+      if (sel) {
+        sel.innerHTML = appState.projects.map(p =>
+          `<option value="${escapeHtml(p.id)}" ${p.id === appState.activeProjectId ? `selected` : ``}>${escapeHtml(p.name)} — ${escapeHtml(p.client)}</option>`
+        ).join(``);
+      }
+
+      const proj = getActiveProject();
+      const strip = document.getElementById(`project-summary-strip`);
+      if (strip) {
+        const shootDatesText = proj.milestones.shootDays.map(d => `Day ${d.day}: ${d.date}`).join(` · `) || `TBD`;
+        strip.innerHTML = `
+          <div><span class="summary-cell-label">Campaign</span><span class="summary-cell-val">${escapeHtml(proj.name)}</span></div>
+          <div><span class="summary-cell-label">Client &amp; Agency</span><span class="summary-cell-val">${escapeHtml(proj.client)} / ${escapeHtml(proj.agency)}</span></div>
+          <div><span class="summary-cell-label">Format &amp; Duration</span><span class="summary-cell-val">${escapeHtml(proj.type)} · ${escapeHtml(proj.duration)}</span></div>
+          <div><span class="summary-cell-label">Shoot Schedule</span><span class="summary-cell-val mono-tag">${escapeHtml(shootDatesText)}</span></div>
+          <div><span class="summary-cell-label">Agency / Client Preview</span><span class="summary-cell-val mono-tag">${escapeHtml(proj.milestones.agencyPreviewDate)} / ${escapeHtml(proj.milestones.clientPreviewDate)}</span></div>
+        `;
+      }
+
+      for (const s of [`pre`, `prod`, `post`]) {
+        const btn = document.getElementById(`stage-btn-${s}`);
+        const panel = document.getElementById(`stage-panel-${s}`);
+        if (btn) btn.classList.toggle(`active`, appState.activeStage === s);
+        if (panel) panel.classList.toggle(`hidden`, appState.activeStage !== s);
+      }
+
+      const watermark = document.getElementById(`stage-watermark`);
+      if (watermark) watermark.innerHTML = STAGE_SVGS[appState.activeStage] || ``;
+
+      if (appState.activeStage === `pre`) renderPreProductionStage(proj);
+      else if (appState.activeStage === `prod`) renderProductionAudioStage(proj);
+      else renderPostProductionStage(proj);
+    }
+
+    /* STAGE 1: PRE-PRODUCTION HUB */
+    function renderPreProductionStage(proj) {
+      const container = document.getElementById(`stage-panel-pre`);
+      if (!container) return;
+
+      const docSlots = [
+        { key: `avBrief`, label: `AV Brief`, locked: false },
+        { key: `script`, label: `Script`, locked: false },
+        { key: `storyboard`, label: `Storyboard`, locked: false },
+        { key: `moodBoard`, label: `Mood Board`, locked: false },
+        { key: `shotList`, label: `Shot List`, locked: false },
+        { key: `budgetSheetInternalOnly`, label: `Budget & Post-Production Breakdown Sheet`, locked: true }
+      ];
+
+      container.innerHTML = `
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Master Milestones, Timelines &amp; Shoot Dates</h2>
+              <p class="sub-text">Project-specific review gates and multi-day shoot calendar for ${escapeHtml(proj.name)}</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="addShootDay()">+ Add Shoot Day</button>
+          </div>
+          <div class="card-grid-2">
+            <div class="field-group">
+              <label class="field-label" for="ms-agency-date">First Agency Preview Date</label>
+              <input class="input" type="date" id="ms-agency-date" value="${escapeHtml(proj.milestones.agencyPreviewDate)}" onchange="updateMilestoneDate('agencyPreviewDate', this.value)">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="ms-client-date">Client Preview Date</label>
+              <input class="input" type="date" id="ms-client-date" value="${escapeHtml(proj.milestones.clientPreviewDate)}" onchange="updateMilestoneDate('clientPreviewDate', this.value)">
+            </div>
+          </div>
+          <div class="card-grid-2 spacer-top">
+            ${proj.milestones.shootDays.map((sd, idx) => `
+              <div class="sub-card">
+                <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.5rem;">
+                  <span class="badge badge-cyan">Shoot Day ${sd.day}</span>
+                  <button type="button" class="btn btn-sm btn-danger" onclick="removeShootDay(${idx})">Remove</button>
+                </div>
+                <div class="card-grid-2">
+                  <div class="field-group">
+                    <label class="field-label" for="sd-date-${idx}">Date</label>
+                    <input class="input" type="date" id="sd-date-${idx}" value="${escapeHtml(sd.date)}" onchange="updateShootDay(${idx}, 'date', this.value)">
+                  </div>
+                  <div class="field-group">
+                    <label class="field-label" for="sd-loc-${idx}">Location / City</label>
+                    <input class="input" id="sd-loc-${idx}" value="${escapeHtml(sd.location)}" onchange="updateShootDay(${idx}, 'location', this.value)">
+                  </div>
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="sd-notes-${idx}">Day Notes</label>
+                  <input class="input" id="sd-notes-${idx}" value="${escapeHtml(sd.notes)}" onchange="updateShootDay(${idx}, 'notes', this.value)">
+                </div>
+              </div>
+            `).join(``)}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Direct Document Upload Repository</h2>
+              <p class="sub-text">Drag &amp; drop PDF, Word, or image files directly, or attach a reference path for ${escapeHtml(proj.name)}</p>
+            </div>
+            <button type="button" class="btn btn-sm" onclick="openAddProjectModal()">+ Add Project</button>
+          </div>
+          <div class="card-grid-3">
+            ${docSlots.map(slot => {
+              const doc = proj.documents[slot.key];
+              const hasDoc = doc && doc.name;
+              return `
+                <div class="doc-dropzone ${slot.locked ? `locked-slot` : ``}" ondragover="handleDocDragOver(event)" ondragleave="handleDocDragLeave(event)" ondrop="handleDocDrop(event, '${slot.key}')">
+                  <div class="row-flex" style="justify-content: space-between;">
+                    <strong>${escapeHtml(slot.label)}</strong>
+                    ${slot.locked ? `<span class="badge badge-red">INTERNAL LOCK</span>` : `<span class="badge badge-cyan">STANDARD</span>`}
+                  </div>
+                  <p class="muted-note">Drop .pdf, .doc, .docx, .png, .jpg or browse desktop</p>
+                  <input type="file" id="file-input-${slot.key}" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" hidden onchange="handleDocSelect(event, '${slot.key}')">
+                  <div class="row-flex">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('file-input-${slot.key}').click()">Upload PDF / Doc</button>
+                    <button type="button" class="btn btn-sm" onclick="toggleDocUrlInput('${slot.key}')">+ Paste Link</button>
+                  </div>
+                  <div id="url-inline-${slot.key}" class="hidden row-flex">
+                    <input class="input" id="url-val-${slot.key}" placeholder="e.g. drive.example.com/brief" aria-label="Paste document link">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="saveDocUrl('${slot.key}')">Save</button>
+                  </div>
+                  ${hasDoc ? `
+                    <div class="sub-card" style="padding: 0.6rem;">
+                      <div class="mono-tag" style="font-size: 0.78rem; word-break: break-word;">${escapeHtml(doc.name)}</div>
+                      <div class="muted-note">${escapeHtml(doc.sizeKB)} KB · ${escapeHtml(doc.kind.toUpperCase())}</div>
+                      <div class="row-flex spacer-top">
+                        <button type="button" class="btn btn-sm btn-emerald" onclick="previewProjectDocument('${proj.id}', '${slot.key}')">Preview File</button>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removeProjectDocument('${slot.key}')">Remove</button>
+                      </div>
+                    </div>
+                  ` : `<span class="muted-note">No file uploaded yet</span>`}
+                </div>
+              `;
+            }).join(``)}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Location Scouting Log</h2>
+              <p class="sub-text">Project-wise scouting status and site logistics</p>
+            </div>
+          </div>
+          <div class="row-end" style="margin-bottom: 1rem;">
+            <div class="field-group" style="flex: 1 1 180px; margin: 0;">
+              <label class="field-label" for="new-loc-name">Location Name</label>
+              <input class="input" id="new-loc-name" placeholder="e.g. Studio Stage C">
+            </div>
+            <div class="field-group" style="flex: 1 1 160px; margin: 0;">
+              <label class="field-label" for="new-loc-area">Area / Address</label>
+              <input class="input" id="new-loc-area" placeholder="e.g. Colombo 03">
+            </div>
+            <div class="field-group" style="flex: 0 1 150px; margin: 0;">
+              <label class="field-label" for="new-loc-status">Status</label>
+              <select class="select" id="new-loc-status">
+                <option value="Scouting">Scouting</option>
+                <option value="Shortlisted">Shortlisted</option>
+                <option value="Approved">Approved</option>
+                <option value="Locked">Locked</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="addScoutingLocation()">+ Add Location</button>
+          </div>
+          <div class="card-grid-3">
+            ${proj.locations.map((loc, idx) => `
+              <div class="sub-card">
+                <div class="row-flex" style="justify-content: space-between;">
+                  <strong>${escapeHtml(loc.name)}</strong>
+                  <span class="badge ${loc.status === `Locked` || loc.status === `Approved` ? `badge-emerald` : `badge-amber`}">${escapeHtml(loc.status)}</span>
+                </div>
+                <p class="muted-note">${escapeHtml(loc.area)}</p>
+                <p class="muted-note spacer-top">${escapeHtml(loc.notes || `Site album attached`)}</p>
+                <div class="row-flex spacer-top">
+                  <button type="button" class="btn btn-sm" onclick="cycleLocationStatus(${idx})">Cycle Status</button>
+                  <button type="button" class="btn btn-sm btn-danger" onclick="removeLocation(${idx})">Remove</button>
+                </div>
+              </div>
+            `).join(``)}
+          </div>
+        </div>
+
+        <div class="card-grid-2">
+          <div class="panel">
+            <div class="section-header-row">
+              <h2 class="section-title">Catering &amp; Food Vendor Directory</h2>
+            </div>
+            <div class="row-end" style="margin-bottom: 1rem;">
+              <div class="field-group" style="flex: 1 1 140px; margin: 0;">
+                <label class="field-label" for="cat-vendor">Vendor Name</label>
+                <input class="input" id="cat-vendor" placeholder="Vendor">
+              </div>
+              <div class="field-group" style="flex: 1 1 130px; margin: 0;">
+                <label class="field-label" for="cat-contact">Contact Person</label>
+                <input class="input" id="cat-contact" placeholder="Name">
+              </div>
+              <div class="field-group" style="flex: 1 1 120px; margin: 0;">
+                <label class="field-label" for="cat-phone">Phone</label>
+                <input class="input" id="cat-phone" placeholder="+94 ...">
+              </div>
+              <button type="button" class="btn btn-primary" onclick="addCateringVendor()">+ Add Vendor</button>
+            </div>
+            <div class="grid-stack" style="gap: 0.6rem;">
+              ${appState.cateringDirectory.map((v, idx) => `
+                <div class="sub-card row-flex" style="justify-content: space-between;">
+                  <div>
+                    <strong>${escapeHtml(v.vendor)}</strong>
+                    <div class="muted-note">${escapeHtml(v.contact)} · <span class="mono-tag">${escapeHtml(v.phone)}</span></div>
+                    <div class="muted-note">Assigned: ${escapeHtml(v.projects)}</div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-danger" onclick="removeCateringVendor(${idx})">Remove</button>
+                </div>
+              `).join(``)}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="section-header-row">
+              <h2 class="section-title">On-Set Crew, Casting &amp; Master Call Sheet</h2>
+            </div>
+            <div class="row-end" style="margin-bottom: 1rem;">
+              <div class="field-group" style="flex: 1 1 120px; margin: 0;">
+                <label class="field-label" for="crew-role">Role / Post</label>
+                <input class="input" id="crew-role" placeholder="e.g. Art Director">
+              </div>
+              <div class="field-group" style="flex: 1 1 130px; margin: 0;">
+                <label class="field-label" for="crew-name">Person Name</label>
+                <input class="input" id="crew-name" placeholder="Full Name">
+              </div>
+              <div class="field-group" style="flex: 0 1 110px; margin: 0;">
+                <label class="field-label" for="crew-call">Call Time</label>
+                <input class="input" id="crew-call" value="06:30 AM">
+              </div>
+              <button type="button" class="btn btn-primary" onclick="addCrewMember()">+ Add Crew</button>
+            </div>
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr><th>Role</th><th>Name</th><th>Call Time</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                  ${proj.crew.map((c, idx) => `
+                    <tr>
+                      <td><strong>${escapeHtml(c.role)}</strong></td>
+                      <td>${escapeHtml(c.name)}<div class="muted-note mono-tag">${escapeHtml(c.contact)}</div></td>
+                      <td class="mono-tag">${escapeHtml(c.callTime)}</td>
+                      <td><button type="button" class="btn btn-sm btn-danger" onclick="removeCrewMember(${idx})">Remove</button></td>
+                    </tr>
+                  `).join(``)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* STAGE 2: PRODUCTION & AUDIO */
+    function renderProductionAudioStage(proj) {
+      const container = document.getElementById(`stage-panel-prod`);
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Synced Shoot Schedule &amp; Live On-Set Weather Forecast</h2>
+              <p class="sub-text">Open-Meteo shoot-day weather telemetry &amp; suitability flags for ${escapeHtml(proj.name)}</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="addShootDay()">+ Add Day</button>
+          </div>
+          <div class="card-grid-2">
+            ${proj.milestones.shootDays.map((sd, idx) => {
+              const w = sd.weather || { city: sd.location, temp: 28, rain: 15, wind: 12, sky: `Clear`, badge: `Optimal for Shoot` };
+              const badgeClass = w.rain >= 60 ? `badge-red` : (w.rain >= 30 ? `badge-amber` : `badge-emerald`);
+              return `
+                <div class="sub-card">
+                  <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.65rem;">
+                    <span class="badge badge-cyan">Day ${sd.day} · ${escapeHtml(sd.date)}</span>
+                    <span class="badge ${badgeClass}">${escapeHtml(w.badge)}</span>
+                  </div>
+                  <p class="muted-note" style="margin-bottom: 0.75rem;">${escapeHtml(sd.notes)}</p>
+                  <div class="row-end" style="margin-bottom: 0.75rem;">
+                    <div class="field-group" style="flex: 1 1 160px; margin: 0;">
+                      <label class="field-label" for="w-city-${idx}">City / Shoot Location</label>
+                      <input class="input" id="w-city-${idx}" value="${escapeHtml(sd.location)}" placeholder="Colombo, Dubai, London, Kandy...">
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="updateShootWeather(${idx})">Sync Forecast</button>
+                  </div>
+                  <div class="campaign-strip" style="margin-top: 0; padding-top: 0.75rem;">
+                    <div><span class="summary-cell-label">Station</span><span class="summary-cell-val">${escapeHtml(w.city)}</span></div>
+                    <div><span class="summary-cell-label">Max Temp</span><span class="summary-cell-val mono-tag">${escapeHtml(w.temp)} °C</span></div>
+                    <div><span class="summary-cell-label">Rain Prob</span><span class="summary-cell-val mono-tag">${escapeHtml(w.rain)}%</span></div>
+                    <div><span class="summary-cell-label">Wind / Sky</span><span class="summary-cell-val">${escapeHtml(w.wind)} km/h · ${escapeHtml(w.sky)}</span></div>
+                  </div>
+                </div>
+              `;
+            }).join(``)}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Voice Cast, Studio Sessions &amp; Artist Payouts</h2>
+              <p class="sub-text">Project-wise voice casting, studio booking, and rate settlement status</p>
+            </div>
+            <div class="row-flex">
+              <button type="button" class="voice-cue-btn" id="voice-cue-trigger" onclick="speakAddVoiceArtistCue(this)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" />
+                </svg>
+                <span>Live Voice Cue</span>
+              </button>
+              <button type="button" class="btn btn-sm" onclick="openAddProjectModal()">+ Add Project</button>
+            </div>
+          </div>
+
+          <div class="grid-stack">
+            ${appState.projects.map(p => `
+              <div class="sub-card">
+                <div class="section-header-row">
+                  <div>
+                    <strong>${escapeHtml(p.name)}</strong>
+                    <span class="badge badge-neutral" style="margin-left: 0.4rem;">${p.voiceOvers.length} Artists</span>
+                  </div>
+                  <button type="button" class="btn btn-primary btn-sm" onclick="toggleVoiceForm('${p.id}')">+ Add Voice Artist</button>
+                </div>
+
+                <div id="vo-form-${p.id}" class="hidden sub-card" style="margin-bottom: 1rem; background: var(--background);">
+                  <div class="card-grid-3">
+                    <div class="field-group"><label class="field-label" for="vo-char-${p.id}">Character / Role</label><input class="input" id="vo-char-${p.id}" placeholder="e.g. Lead Narrator"></div>
+                    <div class="field-group"><label class="field-label" for="vo-type-${p.id}">Voice Type</label><select class="select" id="vo-type-${p.id}"><option>Female</option><option>Male</option><option>Child</option></select></div>
+                    <div class="field-group"><label class="field-label" for="vo-lang-${p.id}">Language</label><select class="select" id="vo-lang-${p.id}"><option>English</option><option>Sinhala</option><option>Tamil</option></select></div>
+                    <div class="field-group"><label class="field-label" for="vo-artist-${p.id}">Artist Name</label><input class="input" id="vo-artist-${p.id}" placeholder="Voice Talent"></div>
+                    <div class="field-group"><label class="field-label" for="vo-studio-${p.id}">Studio &amp; Location</label><input class="input" id="vo-studio-${p.id}" placeholder="Studio Name"></div>
+                    <div class="field-group"><label class="field-label" for="vo-rate-${p.id}">Per-Spot Rate</label><input class="input" id="vo-rate-${p.id}" value="$250"></div>
+                  </div>
+                  <div class="row-flex">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="saveVoiceArtist('${p.id}')">Save Voice Artist</button>
+                    <button type="button" class="btn btn-sm" onclick="toggleVoiceForm('${p.id}')">Cancel</button>
+                  </div>
+                </div>
+
+                <div class="data-table-wrap">
+                  <table class="data-table">
+                    <thead>
+                      <tr><th>Character</th><th>Voice &amp; Lang</th><th>Artist &amp; Studio</th><th>Status</th><th>Rate &amp; Payout</th></tr>
+                    </thead>
+                    <tbody>
+                      ${p.voiceOvers.length ? p.voiceOvers.map((vo, idx) => {
+                        const pBadge = vo.payment === `Paid` ? `badge-emerald` : (vo.payment === `Processing` ? `badge-amber` : `badge-red`);
+                        return `
+                          <tr>
+                            <td><strong>${escapeHtml(vo.character)}</strong></td>
+                            <td>${escapeHtml(vo.voiceType)} · ${escapeHtml(vo.language)}</td>
+                            <td>${escapeHtml(vo.artist)}<div class="muted-note">${escapeHtml(vo.studio)} · <span class="mono-tag">${escapeHtml(vo.date)}</span></div></td>
+                            <td>
+                              <button type="button" class="btn btn-sm" onclick="cycleVoStatus('${p.id}', ${idx})">${escapeHtml(vo.status)}</button>
+                            </td>
+                            <td>
+                              <span class="mono-tag">${escapeHtml(vo.rate)}</span>
+                              <button type="button" class="badge ${pBadge}" style="border: 0; cursor: pointer; margin-left: 6px;" onclick="cycleVoPayment('${p.id}', ${idx})">${escapeHtml(vo.payment)}</button>
+                            </td>
+                          </tr>
+                        `;
+                      }).join(``) : `<tr><td colspan="5" class="muted-note">No voice artists logged for this project yet.</td></tr>`}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `).join(``)}
+          </div>
+        </div>
+      `;
+    }
+
+    /* STAGE 3: POST-PRODUCTION ENGINE */
+    function renderPostProductionStage(proj) {
+      const container = document.getElementById(`stage-panel-post`);
+      if (!container) return;
+
+      const backup = proj.postProduction.backup;
+      const streams = proj.postProduction.streams;
+      const sync = proj.postProduction.clientSync;
+      const refDocs = [
+        { key: `avBrief`, label: `AV Brief` },
+        { key: `script`, label: `Script` },
+        { key: `storyboard`, label: `Storyboard` },
+        { key: `moodBoard`, label: `Mood Board` },
+        { key: `shotList`, label: `Shot List` }
+      ];
+
+      const reviewGates = [
+        { key: `offline`, label: `Offline Edit Revisions` },
+        { key: `director`, label: `Director Review` },
+        { key: `internal`, label: `Internal Team Review` },
+        { key: `agency`, label: `Agency Preview & Collective Feedback` },
+        { key: `client`, label: `Client Preview & Final Upload` }
+      ];
+
+      container.innerHTML = `
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Footage Ingest &amp; Hard Drive Backup Log</h2>
+              <p class="sub-text">Verify drive safety immediately after shoot days for ${escapeHtml(proj.name)}</p>
+            </div>
+            <span class="badge ${backup.status === `Dual Backup Verified` ? `badge-emerald` : `badge-amber`}">${escapeHtml(backup.status)}</span>
+          </div>
+          <div class="card-grid-3">
+            <div class="field-group">
+              <label class="field-label" for="bk-drive">Hard Drive Label / ID</label>
+              <input class="input mono-tag" id="bk-drive" value="${escapeHtml(backup.driveName)}" onchange="updateBackupField('driveName', this.value)">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="bk-cap">Capacity &amp; Bay Location</label>
+              <input class="input" id="bk-cap" value="${escapeHtml(backup.capacity)} — ${escapeHtml(backup.location)}" onchange="updateBackupField('location', this.value)">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="bk-status">Backup Verification</label>
+              <select class="select" id="bk-status" onchange="updateBackupField('status', this.value)">
+                <option value="Pending" ${backup.status === `Pending` ? `selected` : ``}>Pending</option>
+                <option value="Primary Ingested" ${backup.status === `Primary Ingested` ? `selected` : ``}>Primary Ingested</option>
+                <option value="Dual Backup Verified" ${backup.status === `Dual Backup Verified` ? `selected` : ``}>Dual Backup Verified</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Editor Reference Documents</h2>
+              <p class="sub-text">For Editor References — auto-synced across active campaigns</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openAddProjectModal()">+ Add New Project</button>
+          </div>
+          <div class="card-grid-2">
+            ${appState.projects.map(p => `
+              <div class="sub-card">
+                <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.65rem;">
+                  <strong>${escapeHtml(p.name)}</strong>
+                  <span class="badge badge-cyan">${escapeHtml(p.duration)}</span>
+                </div>
+                <div class="grid-stack" style="gap: 0.45rem;">
+                  ${refDocs.map(d => {
+                    const doc = p.documents[d.key];
+                    return `
+                      <div class="row-flex" style="justify-content: space-between; padding: 0.35rem 0; border-bottom: var(--hairline);">
+                        <span>${escapeHtml(d.label)}</span>
+                        ${doc && doc.name ? `
+                          <button type="button" class="btn btn-sm btn-emerald" onclick="previewProjectDocument('${p.id}', '${d.key}')">Open ${escapeHtml(doc.kind.toUpperCase())}</button>
+                        ` : `<span class="muted-note">Pending</span>`}
+                      </div>
+                    `;
+                  }).join(``)}
+                </div>
+              </div>
+            `).join(``)}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Real-Time Department Pipeline</h2>
+              <p class="sub-text">Parallel post-production streams across ${escapeHtml(proj.name)}</p>
+            </div>
+            <div class="row-flex">
+              <button type="button" class="btn btn-sm" onclick="openAddProjectModal()">+ Add Project</button>
+            </div>
+          </div>
+
+          <div class="row-flex" style="margin-bottom: 1rem;">
+            ${appState.projects.map(p => `
+              <button type="button" class="btn btn-sm ${p.id === proj.id ? `btn-primary` : ``}" onclick="selectActiveProject('${p.id}')">${escapeHtml(p.name)}</button>
+            `).join(``)}
+          </div>
+
+          <div class="pipeline-grid-2x2">
+            <!-- Row 1 Left: Offline Edit -->
+            <div class="dept-card offline-edit">
+              <div class="dept-playhead" aria-hidden="true"></div>
+              <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.75rem;">
+                <h3>Offline Edit</h3>
+                <span class="badge badge-cyan mono-tag">${streams.offline.progress}%</span>
+              </div>
+              <div class="card-grid-2">
+                <div class="field-group">
+                  <label class="field-label" for="pp-off-ed">Editor</label>
+                  <input class="input" id="pp-off-ed" value="${escapeHtml(streams.offline.assignee)}" onchange="updateStreamField('offline', 'assignee', this.value)">
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="pp-off-prog">Progress %</label>
+                  <input class="input mono-tag" type="number" min="0" max="100" id="pp-off-prog" value="${streams.offline.progress}" onchange="updateStreamField('offline', 'progress', Number(this.value))">
+                </div>
+              </div>
+              <div class="row-flex" style="justify-content: space-between; margin-top: 0.5rem;">
+                <span class="muted-note mono-tag">Handover: ${escapeHtml(streams.offline.handoverDate)}</span>
+                <button type="button" class="btn btn-sm ${streams.offline.sentToColor ? `btn-emerald` : ``}" onclick="toggleOfflineHandover()">
+                  ${streams.offline.sentToColor ? `Handed Over to Color: YES` : `Handed Over to Color: NO`}
+                </button>
+              </div>
+            </div>
+
+            <!-- Row 1 Right: Color Grade -->
+            <div class="dept-card color-grade">
+              <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.75rem; position: relative; z-index: 2;">
+                <h3>Color Grade</h3>
+                <span class="badge badge-amber">${escapeHtml(streams.color.status)}</span>
+              </div>
+              <div class="card-grid-2" style="position: relative; z-index: 2;">
+                <div class="field-group">
+                  <label class="field-label" for="pp-col-name">Colorist</label>
+                  <input class="input" id="pp-col-name" value="${escapeHtml(streams.color.assignee)}" onchange="updateStreamField('color', 'assignee', this.value)">
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="pp-col-status">Grade Status</label>
+                  <select class="select" id="pp-col-status" onchange="updateStreamField('color', 'status', this.value)">
+                    <option ${streams.color.status === `Awaiting Offline` ? `selected` : ``}>Awaiting Offline</option>
+                    <option ${streams.color.status === `Handed Over` ? `selected` : ``}>Handed Over</option>
+                    <option ${streams.color.status === `In Progress` ? `selected` : ``}>In Progress</option>
+                    <option ${streams.color.status === `Received Back` ? `selected` : ``}>Received Back</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row-flex" style="justify-content: space-between; margin-top: 0.5rem; position: relative; z-index: 2;">
+                <span class="muted-note mono-tag">Turnaround: ${streams.color.days} day(s)</span>
+                <button type="button" class="btn btn-sm" onclick="incrementColorDays()">+1 Grade Day</button>
+              </div>
+            </div>
+
+            <!-- Row 2 Left: Music & Sound Design -->
+            <div class="dept-card music-sound">
+              <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.75rem;">
+                <div class="row-flex">
+                  <h3>Music &amp; Sound Design</h3>
+                  <span class="eq-bars" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                </div>
+                <span class="badge badge-cyan mono-tag">${streams.music.revisions} Rev</span>
+              </div>
+              <div class="card-grid-2">
+                <div class="field-group">
+                  <label class="field-label" for="pp-mus-name">Composer / Sound</label>
+                  <input class="input" id="pp-mus-name" value="${escapeHtml(streams.music.assignee)}" onchange="updateStreamField('music', 'assignee', this.value)">
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="pp-mus-status">Mix Status</label>
+                  <select class="select" id="pp-mus-status" onchange="updateStreamField('music', 'status', this.value)">
+                    <option ${streams.music.status === `Awaiting Offline` ? `selected` : ``}>Awaiting Offline</option>
+                    <option ${streams.music.status === `In Progress` ? `selected` : ``}>In Progress</option>
+                    <option ${streams.music.status === `Approved Mix` ? `selected` : ``}>Approved Mix</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row-flex" style="justify-content: space-between; margin-top: 0.5rem;">
+                <span class="muted-note mono-tag">Target: ${escapeHtml(streams.music.completionDate)}</span>
+                <button type="button" class="btn btn-sm" onclick="incrementMusicRevision()">+1 Music Revision</button>
+              </div>
+            </div>
+
+            <!-- Row 2 Right: VFX, Supers & 3D CG -->
+            <div class="dept-card vfx-grid">
+              <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.75rem; position: relative; z-index: 2;">
+                <h3>VFX, Supers &amp; 3D CG</h3>
+                <span class="badge badge-amber mono-tag">${streams.vfx.corrections} Corrections</span>
+              </div>
+              <div class="card-grid-2" style="position: relative; z-index: 2;">
+                <div class="field-group">
+                  <label class="field-label" for="pp-vfx-name">Artist / Vendor</label>
+                  <input class="input" id="pp-vfx-name" value="${escapeHtml(streams.vfx.assignee)}" onchange="updateStreamField('vfx', 'assignee', this.value)">
+                </div>
+                <div class="field-group">
+                  <label class="field-label" for="pp-vfx-cat">Category</label>
+                  <select class="select" id="pp-vfx-cat" onchange="updateStreamField('vfx', 'category', this.value)">
+                    <option ${streams.vfx.category === `Graphics` ? `selected` : ``}>Graphics</option>
+                    <option ${streams.vfx.category === `Supers & 3D CG` ? `selected` : ``}>Supers &amp; 3D CG</option>
+                    <option ${streams.vfx.category === `Supers` ? `selected` : ``}>Supers</option>
+                    <option ${streams.vfx.category === `VFX` ? `selected` : ``}>VFX</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row-flex" style="justify-content: space-between; margin-top: 0.5rem; position: relative; z-index: 2;">
+                <span class="muted-note">Status: <strong>${escapeHtml(streams.vfx.status)}</strong></span>
+                <button type="button" class="btn btn-sm" onclick="incrementVfxCorrections()">+1 Correction</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Edit &amp; Review Workflow Tracker</h2>
+              <p class="sub-text">Project-wise revision control across all five approval gates</p>
+            </div>
+            <button type="button" class="btn btn-sm" onclick="openAddProjectModal()">+ Add Project</button>
+          </div>
+          <div class="grid-stack" style="gap: 0.85rem;">
+            ${reviewGates.map(gate => {
+              const list = proj.postProduction.reviews[gate.key] || [];
+              return `
+                <div class="sub-card">
+                  <div class="section-header-row" style="margin-bottom: 0.5rem;">
+                    <strong>${escapeHtml(gate.label)}</strong>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="toggleReviewGateForm('${gate.key}')">+ Add Cut / Feedback</button>
+                  </div>
+                  <div id="rev-form-${gate.key}" class="hidden row-end" style="margin-bottom: 0.75rem;">
+                    <div class="field-group" style="flex: 0 1 130px; margin: 0;">
+                      <label class="field-label" for="rev-ver-${gate.key}">Cut Version</label>
+                      <input class="input mono-tag" id="rev-ver-${gate.key}" value="Cut V${list.length + 1}.0">
+                    </div>
+                    <div class="field-group" style="flex: 1 1 220px; margin: 0;">
+                      <label class="field-label" for="rev-note-${gate.key}">Feedback Notes</label>
+                      <input class="input" id="rev-note-${gate.key}" placeholder="Notes, timecodes, or assigned artist">
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="saveReviewGateEntry('${gate.key}')">Log Entry</button>
+                  </div>
+                  ${list.length ? list.map((item, idx) => `
+                    <div class="row-flex" style="justify-content: space-between; padding: 0.45rem 0; border-top: var(--hairline);">
+                      <div>
+                        <span class="badge badge-cyan mono-tag">${escapeHtml(item.version)}</span>
+                        <span class="muted-note" style="margin-left: 0.5rem;">${escapeHtml(item.reason || gate.label)}</span>
+                        <div style="margin-top: 0.25rem;">${escapeHtml(item.notes)}</div>
+                      </div>
+                      <button type="button" class="btn btn-sm ${item.approved ? `btn-emerald` : ``}" onclick="toggleReviewApproval('${gate.key}', ${idx})">
+                        ${item.approved ? `Approved` : `Mark Approved`}
+                      </button>
+                    </div>
+                  `).join(``) : `<p class="muted-note">No entries logged in this gate yet.</p>`}
+                </div>
+              `;
+            }).join(``)}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Master Delivery &amp; Client Gate Sync Control</h2>
+              <p class="sub-text">Control exactly what is published and unlocked inside ${escapeHtml(proj.name)}'s External Client Gate</p>
+            </div>
+            <span class="badge ${sync.masterUnlocked ? `badge-emerald` : `badge-red`}">${sync.masterUnlocked ? `UNLOCKED FOR CLIENT` : `VAULT LOCKED`}</span>
+          </div>
+          <div class="card-grid-3">
+            <div class="field-group">
+              <label class="field-label" for="sync-curated-status">Client-Facing Curated Status</label>
+              <select class="select" id="sync-curated-status" onchange="updateClientSync('curatedStatus', this.value)">
+                <option ${sync.curatedStatus === `In Production` ? `selected` : ``}>In Production</option>
+                <option ${sync.curatedStatus === `Post-Production in Progress` ? `selected` : ``}>Post-Production in Progress</option>
+                <option ${sync.curatedStatus === `Preview Ready for Review` ? `selected` : ``}>Preview Ready for Review</option>
+                <option ${sync.curatedStatus === `Final Master Delivered` ? `selected` : ``}>Final Master Delivered</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="sync-preview-ver">Preview Cut Version Label</label>
+              <input class="input mono-tag" id="sync-preview-ver" value="${escapeHtml(sync.previewVersion)}" onchange="updateClientSync('previewVersion', this.value)">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="sync-master-link">Final Master Release Package</label>
+              <input class="input mono-tag" id="sync-master-link" value="${escapeHtml(sync.masterReleaseLink)}" onchange="updateClientSync('masterReleaseLink', this.value)">
+            </div>
+          </div>
+          <div class="row-flex spacer-top" style="justify-content: space-between;">
+            <div class="row-flex">
+              <button type="button" class="btn btn-sm" onclick="document.getElementById('upload-client-cut-video').click()">Attach Local MP4 / MOV Cut</button>
+              <button type="button" class="btn btn-sm" onclick="copyIsolatedClientLink()">Copy Client Gate Link</button>
+            </div>
+            <button type="button" class="btn ${sync.masterUnlocked ? `btn-danger` : `btn-emerald`}" onclick="toggleMasterVaultUnlock()">
+              ${sync.masterUnlocked ? `Lock Master Vault` : `Unlock Master Package for Client`}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    /* INNOVATION 1: REMOTE EDIT RELAY */
+    function renderRemoteEditRelay() {
+      const container = document.getElementById(`view-relay`);
+      if (!container) return;
+      const r = appState.relay;
+      const hostProj = appState.projects.find(p => p.id === r.hostProjectId) || getActiveProject();
+
+      container.innerHTML = `
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Remote Edit Relay — Virtual Editor Bridge</h2>
+              <p class="sub-text">Pair an absent editor's mobile/laptop session with the office editing PC without third-party desktop software</p>
+            </div>
+            <div class="row-flex">
+              <span class="badge badge-red">INTERNAL TEAM &amp; EDITORS ONLY — ZERO CLIENT VISIBILITY</span>
+              <button type="button" class="btn btn-sm" onclick="toggleRelayDemoSplit()">${r.demoSplitMode ? `Single Panel` : `Split Demo View`}</button>
+            </div>
+          </div>
+
+          <div class="relay-split-grid">
+            <!-- Office PC Host -->
+            <div class="sub-card">
+              <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.75rem;">
+                <h3>Office PC Host</h3>
+                <span class="badge badge-cyan pairing-code">${escapeHtml(r.pairingCode)}</span>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="relay-host-proj">Target Campaign</label>
+                <select class="select" id="relay-host-proj" onchange="updateRelayHostProject(this.value)">
+                  ${appState.projects.map(p => `<option value="${escapeHtml(p.id)}" ${p.id === hostProj.id ? `selected` : ``}>${escapeHtml(p.name)}</option>`).join(``)}
+                </select>
+              </div>
+              <div class="row-flex" style="margin-bottom: 0.75rem;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="generateNewRelayCode()">Generate Pairing Code</button>
+                <button type="button" class="btn btn-sm" onclick="mountOfficeFolder()">Mount Editor Folder</button>
+              </div>
+              <div class="muted-note file-path" style="margin-bottom: 0.6rem;">Mounted Path: ${escapeHtml(r.hostMountedFolder)}</div>
+              <div class="chat-feed-box" style="height: 170px;">
+                ${r.logs.map(l => `<div class="mono-tag" style="font-size: 0.78rem;"><span class="badge badge-neutral">${escapeHtml(l.time)}</span> ${escapeHtml(l.msg)}</div>`).join(``)}
+              </div>
+            </div>
+
+            <!-- Remote Editor Controller -->
+            <div class="sub-card">
+              <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.75rem;">
+                <h3>Remote Editor Controller</h3>
+                <span class="badge badge-emerald">PAIRED</span>
+              </div>
+              <div class="row-end" style="margin-bottom: 0.75rem;">
+                <div class="field-group" style="flex: 1 1 150px; margin: 0;">
+                  <label class="field-label" for="relay-join-code">Enter 6-Digit Pairing Code</label>
+                  <input class="input pairing-code" id="relay-join-code" value="${escapeHtml(r.pairingCode)}">
+                </div>
+                <button type="button" class="btn btn-sm" onclick="verifyRelayPairing()">Connect</button>
+              </div>
+              <span class="field-label">Virtual Folder Tree</span>
+              <div class="folder-tree-list spacer-top" style="margin-top: 0.35rem; margin-bottom: 0.75rem;">
+                ${r.files.map(f => `
+                  <button type="button" class="folder-item-btn ${r.selectedFilePath === f.path ? `selected` : ``}" onclick="selectRelayFile('${escapeHtml(f.path)}')">
+                    <span>${escapeHtml(f.path)}</span>
+                    <span>${escapeHtml(f.size)}</span>
+                  </button>
+                `).join(``)}
+              </div>
+              <div class="row-end">
+                <div class="field-group" style="flex: 1 1 180px; margin: 0;">
+                  <label class="field-label" for="relay-dest-gate">Publish Destination</label>
+                  <select class="select" id="relay-dest-gate" onchange="updateRelayDestination(this.value)">
+                    <option value="post-production" ${r.destinationGate === `post-production` ? `selected` : ``}>Post-Production Preview</option>
+                    <option value="external-client-gate" ${r.destinationGate === `external-client-gate` ? `selected` : ``}>External Client Gate Release</option>
+                  </select>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="remoteTriggerUpload()">Remote Trigger Upload</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* INNOVATION 2: LIVE EDIT SUITE */
+    function renderLiveEditSuite() {
+      const container = document.getElementById(`view-suite`);
+      if (!container) return;
+      const ls = appState.liveSuite;
+      const proj = appState.projects.find(p => p.id === ls.projectId) || getActiveProject();
+
+      container.innerHTML = `
+        <div class="panel">
+          <div class="section-header-row">
+            <div>
+              <h2 class="section-title animated-title">Live Edit Suite — Virtual Client Watch-Room</h2>
+              <p class="sub-text">On-demand supervised timeline streaming with group voice, chat, and reference links</p>
+            </div>
+            <div class="row-flex">
+              <span class="badge ${ls.active ? `badge-emerald` : `badge-neutral`}">${ls.active ? `LIVE · VIEW-ONLY (CLIENT CONTROL DISABLED)` : `SESSION LOCKED · OFFLINE`}</span>
+              <span class="badge badge-cyan">ZERO PC CONTROL</span>
+            </div>
+          </div>
+
+          <div class="row-end" style="margin-bottom: 1rem;">
+            <div class="field-group" style="flex: 1 1 220px; margin: 0;">
+              <label class="field-label" for="suite-project-select">Suite Campaign Room</label>
+              <select class="select" id="suite-project-select" onchange="changeLiveSuiteProject(this.value)">
+                ${appState.projects.map(p => `<option value="${escapeHtml(p.id)}" ${p.id === proj.id ? `selected` : ``}>${escapeHtml(p.name)}</option>`).join(``)}
+              </select>
+            </div>
+            ${ls.active ? `
+              <button type="button" class="btn btn-primary" onclick="startLiveEditScreenShare()">Share Timeline Screen</button>
+              <button type="button" class="btn" onclick="toggleSuiteMic('editor')">${ls.editorMicOn ? `Editor Mic: ON` : `Editor Mic: MUTED`}</button>
+              <button type="button" class="btn" onclick="copyIsolatedClientLink('${proj.id}')">Copy Guest Watch Link</button>
+              <button type="button" class="btn btn-danger" onclick="endAndLockLiveEditSuite()">End &amp; Lock Session</button>
+            ` : `
+              <button type="button" class="btn btn-emerald" onclick="activateLiveEditSuite()">Start Live Edit Suite</button>
+            `}
+          </div>
+
+          <div class="live-suite-layout">
+            <div>
+              <div class="video-stage-box">
+                <video id="live-suite-video" class="hidden" autoplay muted playsinline></video>
+                <canvas id="live-suite-canvas" width="960" height="540"></canvas>
+              </div>
+              <div class="sub-card spacer-top">
+                <div class="row-flex" style="justify-content: space-between; margin-bottom: 0.5rem;">
+                  <strong>Connected Roster</strong>
+                  <span class="muted-note">Host kill-switch active</span>
+                </div>
+                <div class="row-flex">
+                  ${ls.participants.map(pt => `
+                    <span class="badge ${pt.role.includes(`Host`) ? `badge-cyan` : `badge-neutral`}">${escapeHtml(pt.name)} · ${escapeHtml(pt.role)}</span>
+                  `).join(``)}
+                </div>
+              </div>
+            </div>
+
+            <div class="sub-card" style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <div class="row-flex" style="justify-content: space-between;">
+                <strong>Group Voice &amp; Messaging Corner</strong>
+                <button type="button" class="btn btn-sm" onclick="toggleSuiteMic('guest')">${ls.guestMicOn ? `Guest Mic: SPEAKING` : `Guest Mic: MUTED`}</button>
+              </div>
+              <div class="chat-feed-box" id="live-suite-chat-feed">
+                ${ls.messages.map(m => `
+                  <div class="sub-card" style="padding: 0.55rem;">
+                    <div class="row-flex" style="justify-content: space-between; font-size: 0.76rem;">
+                      <strong>${escapeHtml(m.author)} <span class="badge badge-cyan">${escapeHtml(m.role)}</span></strong>
+                      <span class="mono-tag">${escapeHtml(m.time)}</span>
+                    </div>
+                    ${m.text ? `<p style="margin-top: 0.3rem; color: var(--on-surface); font-size: 0.86rem;">${escapeHtml(m.text)}</p>` : ``}
+                    ${m.refLink ? `<div class="mono-tag" style="margin-top: 0.25rem; font-size: 0.75rem; color: var(--primary);">Ref: ${escapeHtml(m.refLink)}</div>` : ``}
+                  </div>
+                `).join(``)}
+              </div>
+              <div class="field-group" style="margin: 0;">
+                <label class="field-label" for="suite-chat-input">Timestamped Direction / Note</label>
+                <input class="input" id="suite-chat-input" placeholder="e.g. Hold hero bottle shot 10 frames longer">
+              </div>
+              <div class="field-group" style="margin: 0;">
+                <label class="field-label" for="suite-ref-input">Reference Asset Link (Optional)</label>
+                <input class="input mono-tag" id="suite-ref-input" placeholder="example.com/ref/color-match">
+              </div>
+              <div class="row-flex">
+                <button type="button" class="btn btn-primary btn-sm" onclick="sendLiveSuiteChat()">Send Note</button>
+                <button type="button" class="btn btn-emerald btn-sm" onclick="saveSuiteNotesToReviewLog()">Save Notes to Review Log</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      drawLiveSuiteStageCanvas();
+    }
+
+    function drawLiveSuiteStageCanvas() {
+      const canvas = document.getElementById(`live-suite-canvas`);
+      if (!canvas) return;
+      const ctx = canvas.getContext(`2d`);
+      if (!ctx) return;
+      const ls = appState.liveSuite;
+      const proj = appState.projects.find(p => p.id === ls.projectId) || getActiveProject();
+
+      ctx.fillStyle = `#090d16`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = `rgba(56, 189, 248, 0.18)`;
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 60) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 60) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      ctx.fillStyle = `#f8fafc`;
+      ctx.font = `800 30px "Plus Jakarta Sans", sans-serif`;
+      ctx.textAlign = `center`;
+      ctx.fillText(proj.name, canvas.width / 2, 180);
+
+      ctx.fillStyle = ls.active ? `#10b981` : `#94a3b8`;
+      ctx.font = `600 18px "JetBrains Mono", monospace`;
+      ctx.fillText(
+        ls.active
+          ? (ls.screenSharing ? `TIMELINE STREAM ACTIVE · VIEW-ONLY` : `WATCH-ROOM LIVE · CLICK SHARE TIMELINE SCREEN OR REVIEW PREVIEW`)
+          : `ROOM OFFLINE · CLICK START LIVE EDIT SUITE TO INVITE CLIENTS`,
+        canvas.width / 2,
+        235
+      );
+
+      // Simulated timeline tracks
+      ctx.fillStyle = `#172032`;
+      ctx.fillRect(80, 340, 800, 120);
+      ctx.fillStyle = `#1d4ed8`;
+      ctx.fillRect(100, 358, 220, 26);
+      ctx.fillRect(330, 358, 310, 26);
+      ctx.fillStyle = `#38bdf8`;
+      ctx.fillRect(140, 396, 460, 20);
+      ctx.fillStyle = `#10b981`;
+      ctx.fillRect(100, 426, 680, 18);
+    }
+
+    /* VIEW 2: EXTERNAL CLIENT GATE */
+    function renderClientGate() {
+      const container = document.getElementById(`view-client`);
+      if (!container) return;
+      container.classList.remove(`hidden`);
+
+      const proj = getActiveProject();
+      const sync = proj.postProduction.clientSync;
+      const isIsolatedPreview = isStrictUrlClientMode || appState.strictClientPreviewMode;
+      const suiteActiveForThis = appState.liveSuite.active && appState.liveSuite.projectId === proj.id;
+
+      const statusBadgeClass =
+        sync.curatedStatus === `Final Master Delivered` ? `badge-emerald` :
+        sync.curatedStatus === `Preview Ready for Review` ? `badge-cyan` : `badge-amber`;
+
+      container.innerHTML = `
+        ${!isIsolatedPreview ? `
+          <div class="panel" style="margin-bottom: 1.5rem;">
+            <div class="section-header-row" style="margin-bottom: 0.75rem;">
+              <div>
+                <strong>Agency Client Gate Manager</strong>
+                <span class="muted-note" style="margin-left: 0.5rem;">Manage client portals &amp; test isolated links</span>
+              </div>
+              <div class="row-flex">
+                <button type="button" class="btn btn-sm" onclick="openAddProjectModal()">+ Add Project</button>
+                <button type="button" class="btn btn-sm" onclick="toggleStrictClientPreview(true)">Preview Strict Client Mode</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="copyIsolatedClientLink('${proj.id}')">Copy Isolated Client Link</button>
+              </div>
+            </div>
+            <div class="row-end">
+              <div class="field-group" style="flex: 1 1 220px; margin: 0;">
+                <label class="field-label" for="cg-proj-switch">Select Client Campaign</label>
+                <select class="select" id="cg-proj-switch" onchange="selectActiveProject(this.value)">
+                  ${appState.projects.map(p => `<option value="${escapeHtml(p.id)}" ${p.id === proj.id ? `selected` : ``}>${escapeHtml(p.name)}</option>`).join(``)}
+                </select>
+              </div>
+              <div class="field-group" style="flex: 1 1 200px; margin: 0;">
+                <label class="field-label" for="cg-rename-input">Rename Campaign</label>
+                <input class="input" id="cg-rename-input" value="${escapeHtml(proj.name)}">
+              </div>
+              <button type="button" class="btn" onclick="renameActiveProject()">Save Name</button>
+            </div>
+          </div>
+        ` : (!isStrictUrlClientMode ? `
+          <div class="row-flex" style="justify-content: space-between; margin-bottom: 1rem;">
+            <span class="badge badge-cyan">STRICT CLIENT ISOLATION SIMULATION · SINGLE PROJECT ONLY</span>
+            <button type="button" class="btn btn-sm" onclick="toggleStrictClientPreview(false)">Exit Client Preview</button>
+          </div>
+        ` : ``)}
+
+        <!-- Branded Campaign Header -->
+        <div class="panel" style="margin-bottom: 1.5rem;">
+          <div class="row-flex" style="justify-content: space-between;">
+            <div>
+              <span class="summary-cell-label">Slate &amp; Gate — Client Review Portal</span>
+              <h1 class="section-title" style="font-size: var(--display-size); margin-top: 0.25rem;">${escapeHtml(proj.name)}</h1>
+              <p class="sub-text" style="margin-top: 0.35rem;">Client: <strong>${escapeHtml(proj.client)}</strong> · Agency Partner: <strong>${escapeHtml(proj.agency)}</strong></p>
+            </div>
+            <div style="text-align: right;">
+              <span class="badge ${statusBadgeClass}" style="font-size: 0.85rem; padding: 6px 14px;">${escapeHtml(sync.curatedStatus)}</span>
+              <div class="muted-note mono-tag" style="margin-top: 0.45rem;">Active Cut: ${escapeHtml(sync.previewVersion)}</div>
+            </div>
+          </div>
+        </div>
+
+        ${suiteActiveForThis ? `
+          <div class="panel" style="margin-bottom: 1.5rem; border-color: var(--tertiary);">
+            <div class="row-flex" style="justify-content: space-between;">
+              <div>
+                <span class="badge badge-emerald">LIVE EDIT SUITE ACTIVE</span>
+                <p style="margin-top: 0.4rem;">Your editor has opened a live view-only watch-room for ${escapeHtml(proj.name)}.</p>
+              </div>
+              ${!isIsolatedPreview ? `<button type="button" class="btn btn-emerald" onclick="switchTopView('suite')">Join Live Edit Suite</button>` : `<span class="badge badge-cyan">Watch-Room Ready</span>`}
+            </div>
+          </div>
+        ` : ``}
+
+        <div class="live-suite-layout">
+          <!-- Approved Video Preview Player -->
+          <div class="panel">
+            <div class="section-header-row">
+              <div>
+                <h2 class="section-title">Approved Video Preview Player</h2>
+                <p class="sub-text">${escapeHtml(sync.previewVersion)} · ${escapeHtml(proj.duration)} ${escapeHtml(proj.type)}</p>
+              </div>
+              <div class="row-flex">
+                <button type="button" class="btn btn-sm btn-primary" onclick="togglePreviewPlayback()">${previewPlaying ? `Pause` : `Play`}</button>
+                <button type="button" class="btn btn-sm" onclick="scrubPreviewTo(0)">Restart</button>
+              </div>
+            </div>
+            <div class="video-stage-box">
+              ${sessionBlobMap[proj.id] ? `
+                <video src="${escapeHtml(sessionBlobMap[proj.id])}" controls playsinline></video>
+              ` : `
+                <canvas id="client-preview-canvas" width="960" height="540"></canvas>
+              `}
+            </div>
+            ${!sessionBlobMap[proj.id] ? `
+              <div class="row-flex spacer-top">
+                <label class="field-label" for="client-scrub" style="margin: 0;">Timecode</label>
+                <input type="range" id="client-scrub" min="0" max="100" value="${Math.round(previewProgress * 100)}" style="flex: 1;" oninput="scrubPreviewTo(this.value / 100)">
+                <span class="mono-tag" id="client-tc-readout">00:08 / 00:30</span>
+              </div>
+            ` : ``}
+
+            <!-- Final Master Package Delivery Vault -->
+            <div class="sub-card spacer-top" style="border-color: ${sync.masterUnlocked ? `var(--tertiary)` : `var(--outline-variant)`};">
+              <div class="row-flex" style="justify-content: space-between;">
+                <div>
+                  <h3>Final Master Package Delivery Vault</h3>
+                  <p class="muted-note">
+                    ${sync.masterUnlocked
+                      ? `Master package unlocked and ready: ${escapeHtml(sync.masterReleaseLink)}`
+                      : `Final Master Package will unlock here upon final approval.`}
+                  </p>
+                </div>
+                ${sync.masterUnlocked
+                  ? `<button type="button" class="btn btn-emerald" onclick="downloadClientMaster('${proj.id}')">Download Final Master Package</button>`
+                  : `<span class="badge badge-neutral">LOCKED</span>`}
+              </div>
+            </div>
+          </div>
+
+          <!-- Stakeholder Review & Feedback Hub -->
+          <div class="panel">
+            <h2 class="section-title">Stakeholder Review &amp; Feedback Hub</h2>
+            <p class="sub-text" style="margin-bottom: 1rem;">Structured sign-off replacing scattered WhatsApp groups</p>
+            <div class="field-group">
+              <label class="field-label" for="cf-author">Stakeholder Name</label>
+              <input class="input" id="cf-author" placeholder="e.g. Brand Manager Name">
+            </div>
+            <div class="card-grid-2">
+              <div class="field-group">
+                <label class="field-label" for="cf-role">Role</label>
+                <select class="select" id="cf-role">
+                  <option>Brand Manager</option>
+                  <option>Marketing Lead</option>
+                  <option>Agency Account Director</option>
+                  <option>Executive Approver</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="cf-tc">Timecode (Optional)</label>
+                <input class="input mono-tag" id="cf-tc" placeholder="00:14">
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="cf-comment">Requested Changes / Approval Note</label>
+              <textarea class="textarea" id="cf-comment" placeholder="Specify frame note or sign-off confirmation"></textarea>
+            </div>
+            <div class="row-flex" style="margin-bottom: 1.25rem;">
+              <button type="button" class="btn" onclick="submitClientFeedback('Request Changes')">Request Changes</button>
+              <button type="button" class="btn btn-emerald" onclick="submitClientFeedback('Approve Cut')">Approve Cut</button>
+            </div>
+
+            <span class="field-label">Submitted Feedback (${proj.clientFeedback.length})</span>
+            <div class="grid-stack spacer-top" style="gap: 0.65rem; max-height: 280px; overflow-y: auto;">
+              ${proj.clientFeedback.length ? proj.clientFeedback.map(fb => `
+                <div class="sub-card">
+                  <div class="row-flex" style="justify-content: space-between;">
+                    <strong>${escapeHtml(fb.author)}</strong>
+                    <span class="badge ${fb.decision === `Approve Cut` ? `badge-emerald` : `badge-amber`}">${escapeHtml(fb.decision)}</span>
+                  </div>
+                  <div class="muted-note mono-tag">${escapeHtml(fb.role)}${fb.timecode ? ` · TC ${escapeHtml(fb.timecode)}` : ``}</div>
+                  <p style="margin-top: 0.4rem; color: var(--on-surface); font-size: 0.88rem;">${escapeHtml(fb.comment)}</p>
+                </div>
+              `).join(``) : `<p class="muted-note">No stakeholder feedback submitted for this version yet.</p>`}
+            </div>
+          </div>
+        </div>
+      `;
+
+      startClientPreviewLoop();
+    }
+
+    function startClientPreviewLoop() {
+      cancelAnimationFrame(previewAnimId);
+      const canvas = document.getElementById(`client-preview-canvas`);
+      if (!canvas) return;
+      const ctx = canvas.getContext(`2d`);
+      if (!ctx) return;
+
+      function frame() {
+        const currentCanvas = document.getElementById(`client-preview-canvas`);
+        if (!currentCanvas) return;
+        const proj = getActiveProject();
+        if (previewPlaying) {
+          previewProgress = (previewProgress + 0.0022) % 1;
+          const scrub = document.getElementById(`client-scrub`);
+          if (scrub) scrub.value = String(Math.round(previewProgress * 100));
+        }
+
+        const tcEl = document.getElementById(`client-tc-readout`);
+        const sec = Math.floor(previewProgress * 30);
+        if (tcEl) tcEl.textContent = `00:${String(sec).padStart(2, `0`)} / 00:30`;
+
+        const w = canvas.width;
+        const h = canvas.height;
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, `#0a1222`);
+        grad.addColorStop(0.55, `#15294a`);
+        grad.addColorStop(1, `#080c14`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Moving cinematic light bar
+        const beamX = previewProgress * w;
+        const beam = ctx.createRadialGradient(beamX, h * 0.45, 10, beamX, h * 0.45, 220);
+        beam.addColorStop(0, `rgba(56, 189, 248, 0.35)`);
+        beam.addColorStop(1, `transparent`);
+        ctx.fillStyle = beam;
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.fillStyle = `#f8fafc`;
+        ctx.font = `800 32px "Plus Jakarta Sans", sans-serif`;
+        ctx.textAlign = `center`;
+        ctx.fillText(proj.name, w / 2, h / 2 - 12);
+
+        ctx.fillStyle = `#38bdf8`;
+        ctx.font = `600 18px "JetBrains Mono", monospace`;
+        ctx.fillText(`${proj.postProduction.clientSync.previewVersion} · TC 00:${String(sec).padStart(2, `0`)}:12`, w / 2, h / 2 + 28);
+
+        previewAnimId = requestAnimationFrame(frame);
+      }
+      previewAnimId = requestAnimationFrame(frame);
+    }
+
+    function togglePreviewPlayback() {
+      previewPlaying = !previewPlaying;
+      renderClientGate();
+    }
+
+    function scrubPreviewTo(val) {
+      previewProgress = Math.max(0, Math.min(1, Number(val)));
+    }
+
+    /* MUTATION HANDLERS */
+    function updateMilestoneDate(field, val) {
+      getActiveProject().milestones[field] = val;
+      persistState();
+      renderInternalOperations();
+    }
+
+    function addShootDay() {
+      const proj = getActiveProject();
+      const nextNum = proj.milestones.shootDays.length + 1;
+      proj.milestones.shootDays.push({
+        id: `sd_${Date.now()}`,
+        day: nextNum,
+        date: `2026-12-0${Math.min(9, nextNum)}`,
+        location: `Colombo`,
+        notes: `Shoot Day ${nextNum} Unit Setup`,
+        weather: { city: `Colombo, LK`, temp: 29, rain: 18, wind: 14, sky: `Partly Cloudy`, badge: `Optimal for Shoot` }
+      });
+      persistState();
+      renderInternalOperations();
+      showToast(`Added Shoot Day ${nextNum}`);
+    }
+
+    function updateShootDay(idx, field, val) {
+      const sd = getActiveProject().milestones.shootDays[idx];
+      if (!sd) return;
+      sd[field] = val;
+      persistState();
+    }
+
+    function removeShootDay(idx) {
+      const days = getActiveProject().milestones.shootDays;
+      if (days.length <= 1) {
+        showToast(`At least one shoot day is required.`);
+        return;
+      }
+      days.splice(idx, 1);
+      days.forEach((d, i) => { d.day = i + 1; });
+      persistState();
+      renderInternalOperations();
+    }
+
+    function handleDocDragOver(e) {
+      e.preventDefault();
+      e.currentTarget.classList.add(`drag-active`);
+    }
+    function handleDocDragLeave(e) {
+      e.currentTarget.classList.remove(`drag-active`);
+    }
+    function handleDocDrop(e, slotKey) {
+      e.preventDefault();
+      e.currentTarget.classList.remove(`drag-active`);
+      const file = e.dataTransfer?.files?.[0];
+      if (file) attachDocFile(slotKey, file);
+    }
+    function handleDocSelect(e, slotKey) {
+      const file = e.target?.files?.[0];
+      if (file) attachDocFile(slotKey, file);
+    }
+    function attachDocFile(slotKey, file) {
+      const proj = getActiveProject();
+      const ext = file.name.split(`.`).pop().toLowerCase();
+      const kind = ext === `pdf` ? `pdf` : (ext.includes(`doc`) ? `docx` : `image`);
+      const blobUrl = URL.createObjectURL(file);
+      sessionBlobMap[`${proj.id}_${slotKey}`] = blobUrl;
+      proj.documents[slotKey] = {
+        name: file.name,
+        sizeKB: (file.size / 1024).toFixed(1),
+        kind,
+        url: `Local Upload`,
+        locked: slotKey === `budgetSheetInternalOnly`,
+        updated: `2026-11-23`
+      };
+      persistState();
+      renderInternalOperations();
+      showToast(`Uploaded ${file.name}`);
+    }
+
+    function toggleDocUrlInput(slotKey) {
+      const box = document.getElementById(`url-inline-${slotKey}`);
+      if (box) box.classList.toggle(`hidden`);
+    }
+
+    function saveDocUrl(slotKey) {
+      const input = document.getElementById(`url-val-${slotKey}`);
+      const val = input?.value.trim();
+      if (!val) return;
+      const proj = getActiveProject();
+      proj.documents[slotKey] = {
+        name: val.split(`/`).pop() || `External_Doc_Link`,
+        sizeKB: `Link`,
+        kind: `link`,
+        url: val,
+        locked: slotKey === `budgetSheetInternalOnly`,
+        updated: `2026-11-23`
+      };
+      persistState();
+      renderInternalOperations();
+      showToast(`Attached reference link`);
+    }
+
+    function removeProjectDocument(slotKey) {
+      const proj = getActiveProject();
+      proj.documents[slotKey] = slotKey === `budgetSheetInternalOnly` ? { name: ``, sizeKB: `0`, kind: `pdf`, url: ``, locked: true, updated: `` } : null;
+      persistState();
+      renderInternalOperations();
+    }
+
+    function previewProjectDocument(projId, slotKey) {
+      const proj = appState.projects.find(p => p.id === projId);
+      const doc = proj?.documents?.[slotKey];
+      if (!doc) return;
+      const body = document.getElementById(`preview-modal-body`);
+      const title = document.getElementById(`preview-modal-title`);
+      const blob = sessionBlobMap[`${projId}_${slotKey}`];
+      if (title) title.textContent = doc.name;
+      if (body) {
+        if (blob && doc.kind === `image`) {
+          body.innerHTML = `<img src="${escapeHtml(blob)}" alt="${escapeHtml(doc.name)}" style="max-width: 100%; border-radius: 8px;">`;
+        } else if (blob && doc.kind === `pdf`) {
+          body.innerHTML = `<iframe src="${escapeHtml(blob)}" style="width: 100%; height: 420px; border: 0; border-radius: 8px;"></iframe>`;
+        } else {
+          body.innerHTML = `
+            <div class="sub-card">
+              <div class="badge badge-cyan mono-tag">${escapeHtml(doc.kind.toUpperCase())}</div>
+              <h4 style="margin-top: 0.75rem;">${escapeHtml(doc.name)}</h4>
+              <p class="muted-note spacer-top">Campaign: ${escapeHtml(proj.name)}</p>
+              <p class="muted-note">Location / Ref: <span class="mono-tag">${escapeHtml(doc.url)}</span></p>
+              <p class="muted-note">File Size: ${escapeHtml(doc.sizeKB)} KB · Updated ${escapeHtml(doc.updated)}</p>
+            </div>
+          `;
+        }
+      }
+      const modal = document.getElementById(`preview-modal`);
+      if (modal) modal.classList.add(`open`);
+    }
+
+    function addScoutingLocation() {
+      const name = document.getElementById(`new-loc-name`)?.value.trim();
+      const area = document.getElementById(`new-loc-area`)?.value.trim();
+      const status = document.getElementById(`new-loc-status`)?.value || `Scouting`;
+      if (!name) return;
+      getActiveProject().locations.push({
+        id: `loc_${Date.now()}`,
+        name,
+        area: area || `TBD`,
+        status,
+        album: `example.com/albums/new`,
+        notes: `Added to location log`
+      });
+      persistState();
+      renderInternalOperations();
+    }
+
+    function cycleLocationStatus(idx) {
+      const order = [`Scouting`, `Shortlisted`, `Approved`, `Locked`];
+      const loc = getActiveProject().locations[idx];
+      if (!loc) return;
+      loc.status = order[(order.indexOf(loc.status) + 1) % order.length];
+      persistState();
+      renderInternalOperations();
+    }
+
+    function removeLocation(idx) {
+      getActiveProject().locations.splice(idx, 1);
+      persistState();
+      renderInternalOperations();
+    }
+
+    function addCateringVendor() {
+      const vendor = document.getElementById(`cat-vendor`)?.value.trim();
+      const contact = document.getElementById(`cat-contact`)?.value.trim();
+      const phone = document.getElementById(`cat-phone`)?.value.trim();
+      if (!vendor) return;
+      appState.cateringDirectory.push({
+        id: `cat_${Date.now()}`,
+        vendor,
+        contact: contact || `Coordinator`,
+        phone: phone || `TBD`,
+        email: `catering@example.com`,
+        projects: getActiveProject().name
+      });
+      persistState();
+      renderInternalOperations();
+    }
+
+    function removeCateringVendor(idx) {
+      appState.cateringDirectory.splice(idx, 1);
+      persistState();
+      renderInternalOperations();
+    }
+
+    function addCrewMember() {
+      const role = document.getElementById(`crew-role`)?.value.trim();
+      const name = document.getElementById(`crew-name`)?.value.trim();
+      const callTime = document.getElementById(`crew-call`)?.value.trim() || `06:00 AM`;
+      if (!role || !name) return;
+      getActiveProject().crew.push({ id: `cr_${Date.now()}`, role, name, contact: `+94 77 000 0000`, callTime });
+      persistState();
+      renderInternalOperations();
+    }
+
+    function removeCrewMember(idx) {
+      getActiveProject().crew.splice(idx, 1);
+      persistState();
+      renderInternalOperations();
+    }
+
+    function updateShootWeather(idx) {
+      const sd = getActiveProject().milestones.shootDays[idx];
+      const cityInput = document.getElementById(`w-city-${idx}`)?.value.trim() || sd.location;
+      sd.location = cityInput;
+      const key = cityInput.toLowerCase().replace(/[^a-z]/g, ``);
+      const preset = Object.keys(WEATHER_CITIES).find(k => key.includes(k));
+      let data;
+      if (preset) {
+        const c = WEATHER_CITIES[preset];
+        data = { city: c.label, temp: c.baseTemp, rain: c.rainBase, wind: c.wind, sky: c.sky };
+      } else {
+        const hash = Array.from(cityInput).reduce((a, ch) => a + ch.charCodeAt(0), 0);
+        const rain = (hash * 13) % 85;
+        data = {
+          city: cityInput,
+          temp: 18 + (hash % 16),
+          rain,
+          wind: 8 + (hash % 18),
+          sky: rain >= 60 ? `Rain Showers` : (rain >= 30 ? `Scattered Clouds` : `Clear Skies`)
+        };
+      }
+      data.badge = data.rain >= 60 ? `High Rain Risk — Backup Needed` : (data.rain >= 30 ? `Weather Caution` : `Optimal for Shoot`);
+      sd.weather = data;
+      persistState();
+      renderInternalOperations();
+      showToast(`Weather forecast synced for ${data.city}`);
+    }
+
+    function speakAddVoiceArtistCue(btn) {
+      if (appState.settings?.voiceCue === false) {
+        showToast(`Voice cue is muted in Settings.`);
+        return;
+      }
+      if (`speechSynthesis` in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(`Add voice artist here`);
+        u.rate = 0.98;
+        u.pitch = 1.02;
+        if (btn) btn.classList.add(`speaking`);
+        u.onend = () => { if (btn) btn.classList.remove(`speaking`); };
+        window.speechSynthesis.speak(u);
+      } else {
+        showToast(`Add voice artist here`);
+      }
+    }
+
+    function toggleVoiceForm(pid) {
+      const el = document.getElementById(`vo-form-${pid}`);
+      if (el) el.classList.toggle(`hidden`);
+    }
+
+    function saveVoiceArtist(pid) {
+      const proj = appState.projects.find(p => p.id === pid);
+      if (!proj) return;
+      const character = document.getElementById(`vo-char-${pid}`)?.value.trim() || `Narrator`;
+      const voiceType = document.getElementById(`vo-type-${pid}`)?.value || `Female`;
+      const language = document.getElementById(`vo-lang-${pid}`)?.value || `English`;
+      const artist = document.getElementById(`vo-artist-${pid}`)?.value.trim();
+      const studio = document.getElementById(`vo-studio-${pid}`)?.value.trim() || `Main Sound Room`;
+      const rate = document.getElementById(`vo-rate-${pid}`)?.value.trim() || `$250`;
+      if (!artist) return;
+      proj.voiceOvers.push({
+        id: `vo_${Date.now()}`,
+        character,
+        voiceType,
+        language,
+        artist,
+        studio,
+        date: `2026-12-03`,
+        status: `Scheduled`,
+        rate,
+        payment: `Pending`
+      });
+      persistState();
+      renderInternalOperations();
+      showToast(`Added voice artist ${artist}`);
+    }
+
+    function cycleVoStatus(pid, idx) {
+      const order = [`Scheduled`, `Recorded`, `Retake Needed`, `Approved`];
+      const vo = appState.projects.find(p => p.id === pid)?.voiceOvers?.[idx];
+      if (!vo) return;
+      vo.status = order[(order.indexOf(vo.status) + 1) % order.length];
+      persistState();
+      renderInternalOperations();
+    }
+
+    function cycleVoPayment(pid, idx) {
+      const order = [`Pending`, `Processing`, `Paid`];
+      const vo = appState.projects.find(p => p.id === pid)?.voiceOvers?.[idx];
+      if (!vo) return;
+      vo.payment = order[(order.indexOf(vo.payment) + 1) % order.length];
+      persistState();
+      renderInternalOperations();
+    }
+
+    function updateBackupField(field, val) {
+      getActiveProject().postProduction.backup[field] = val;
+      persistState();
+      renderInternalOperations();
+    }
+
+    function updateStreamField(streamKey, field, val) {
+      getActiveProject().postProduction.streams[streamKey][field] = val;
+      persistState();
+      renderInternalOperations();
+    }
+
+    function toggleOfflineHandover() {
+      const off = getActiveProject().postProduction.streams.offline;
+      off.sentToColor = !off.sentToColor;
+      if (off.sentToColor && getActiveProject().postProduction.streams.color.status === `Awaiting Offline`) {
+        getActiveProject().postProduction.streams.color.status = `Handed Over`;
+      }
+      persistState();
+      renderInternalOperations();
+    }
+
+    function incrementColorDays() {
+      getActiveProject().postProduction.streams.color.days += 1;
+      persistState();
+      renderInternalOperations();
+    }
+
+    function incrementMusicRevision() {
+      getActiveProject().postProduction.streams.music.revisions += 1;
+      persistState();
+      renderInternalOperations();
+    }
+
+    function incrementVfxCorrections() {
+      getActiveProject().postProduction.streams.vfx.corrections += 1;
+      persistState();
+      renderInternalOperations();
+    }
+
+    function toggleReviewGateForm(gateKey) {
+      const f = document.getElementById(`rev-form-${gateKey}`);
+      if (f) f.classList.toggle(`hidden`);
+    }
+
+    function saveReviewGateEntry(gateKey) {
+      const ver = document.getElementById(`rev-ver-${gateKey}`)?.value.trim() || `Cut V1.0`;
+      const notes = document.getElementById(`rev-note-${gateKey}`)?.value.trim();
+      if (!notes) return;
+      getActiveProject().postProduction.reviews[gateKey].push({
+        id: `rev_${Date.now()}`,
+        version: ver,
+        rounds: 1,
+        reason: `Team Review`,
+        notes,
+        approved: false
+      });
+      persistState();
+      renderInternalOperations();
+    }
+
+    function toggleReviewApproval(gateKey, idx) {
+      const item = getActiveProject().postProduction.reviews[gateKey]?.[idx];
+      if (!item) return;
+      item.approved = !item.approved;
+      persistState();
+      renderInternalOperations();
+    }
+
+    function updateClientSync(field, val) {
+      getActiveProject().postProduction.clientSync[field] = val;
+      persistState();
+      renderInternalOperations();
+    }
+
+    function toggleMasterVaultUnlock() {
+      const sync = getActiveProject().postProduction.clientSync;
+      sync.masterUnlocked = !sync.masterUnlocked;
+      if (sync.masterUnlocked) sync.curatedStatus = `Final Master Delivered`;
+      persistState();
+      renderInternalOperations();
+      showToast(sync.masterUnlocked ? `Final Master Package Unlocked for Client` : `Master Vault Locked`);
+    }
+
+    function handleMasterVideoSelect(e) {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      const proj = getActiveProject();
+      sessionBlobMap[proj.id] = URL.createObjectURL(file);
+      proj.postProduction.clientSync.previewSource = file.name;
+      persistState();
+      showToast(`Attached preview video: ${file.name}`);
+    }
+
+    /* RELAY ACTIONS */
+    function toggleRelayDemoSplit() {
+      appState.relay.demoSplitMode = !appState.relay.demoSplitMode;
+      persistState();
+      renderRemoteEditRelay();
+    }
+
+    function updateRelayHostProject(pid) {
+      appState.relay.hostProjectId = pid;
+      persistState();
+      renderRemoteEditRelay();
+    }
+
+    function generateNewRelayCode() {
+      const code = `SG-${Math.floor(100 + Math.random() * 900)}-${Math.floor(100 + Math.random() * 900)}`;
+      appState.relay.pairingCode = code;
+      appState.relay.logs.unshift({ time: `Now`, msg: `Generated new session code ${code}` });
+      persistState();
+      renderRemoteEditRelay();
+      showToast(`New pairing code: ${code}`);
+    }
+
+    async function mountOfficeFolder() {
+      if (`showDirectoryPicker` in window) {
+        try {
+          const dir = await window.showDirectoryPicker();
+          const list = [];
+          for await (const entry of dir.values()) {
+            list.push({ path: `${dir.name}/${entry.name}`, name: entry.name, size: entry.kind === `file` ? `Local` : `Folder`, kind: entry.kind });
+          }
+          if (list.length) {
+            appState.relay.hostMountedFolder = dir.name;
+            appState.relay.files = list;
+            appState.relay.selectedFilePath = list[0].path;
+            appState.relay.logs.unshift({ time: `Now`, msg: `Mounted local directory "${dir.name}" (${list.length} items)` });
+            if (relayChannel) relayChannel.postMessage({ type: `SYNC_TREE`, files: list, folder: dir.name });
+            persistState();
+            renderRemoteEditRelay();
+            return;
+          }
+        } catch (err) {
+          // User cancelled or sandboxed picker fallback
+        }
+      }
+      document.getElementById(`relay-folder-fallback`)?.click();
+    }
+
+    function handleFallbackFolderSelect(e) {
+      const files = Array.from(e.target?.files || []);
+      if (!files.length) return;
+      appState.relay.files = files.slice(0, 25).map(f => ({
+        path: f.webkitRelativePath || f.name,
+        name: f.name,
+        size: `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
+        kind: `file`
+      }));
+      appState.relay.selectedFilePath = appState.relay.files[0].path;
+      appState.relay.hostMountedFolder = appState.relay.files[0].path.split(`/`)[0] || `Mounted Folder`;
+      appState.relay.logs.unshift({ time: `Now`, msg: `Mounted ${files.length} files via folder picker` });
+      persistState();
+      renderRemoteEditRelay();
+    }
+
+    function verifyRelayPairing() {
+      const entered = document.getElementById(`relay-join-code`)?.value.trim();
+      if (entered === appState.relay.pairingCode) {
+        appState.relay.logs.unshift({ time: `Now`, msg: `Remote Editor connected with code ${entered}` });
+        persistState();
+        renderRemoteEditRelay();
+        showToast(`Remote Editor paired successfully`);
+      } else {
+        showToast(`Pairing code mismatch`);
+      }
+    }
+
+    function selectRelayFile(path) {
+      appState.relay.selectedFilePath = path;
+      persistState();
+      renderRemoteEditRelay();
+    }
+
+    function updateRelayDestination(val) {
+      appState.relay.destinationGate = val;
+      persistState();
+    }
+
+    function remoteTriggerUpload() {
+      const r = appState.relay;
+      const proj = appState.projects.find(p => p.id === r.hostProjectId) || getActiveProject();
+      const fileName = (r.selectedFilePath || ``).split(`/`).pop() || `Relay_Cut.mp4`;
+      if (r.destinationGate === `external-client-gate`) {
+        proj.postProduction.clientSync.previewVersion = fileName.replace(/\.[^.]+$/, ``);
+        proj.postProduction.clientSync.curatedStatus = `Preview Ready for Review`;
+      } else {
+        proj.postProduction.reviews.internal.push({
+          id: `rev_${Date.now()}`,
+          version: fileName,
+          rounds: 1,
+          reason: `Remote Edit Relay Push`,
+          notes: `Pushed remotely from ${r.hostMountedFolder}`,
+          approved: false
+        });
+      }
+      r.logs.unshift({ time: `Now`, msg: `Remote Editor uploaded "${fileName}" to ${r.destinationGate}` });
+      if (relayChannel) relayChannel.postMessage({ type: `REMOTE_UPLOAD`, fileName, destination: r.destinationGate });
+      persistState();
+      renderRemoteEditRelay();
+      showToast(`Pushed ${fileName} to ${r.destinationGate}`);
+    }
+
+    if (relayChannel) {
+      relayChannel.onmessage = (event) => {
+        if (event.data?.type === `REMOTE_UPLOAD`) {
+          showToast(`Relay sync received: ${event.data.fileName}`);
+        }
+      };
+    }
+
+    /* LIVE EDIT SUITE ACTIONS */
+    function changeLiveSuiteProject(pid) {
+      appState.liveSuite.projectId = pid;
+      persistState();
+      renderLiveEditSuite();
+    }
+
+    function activateLiveEditSuite() {
+      appState.liveSuite.active = true;
+      persistState();
+      renderTopNavigation();
+      renderLiveEditSuite();
+      showToast(`Live Edit Suite opened (View-Only Client Policy enforced)`);
+    }
+
+    async function startLiveEditScreenShare() {
+      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+          const videoEl = document.getElementById(`live-suite-video`);
+          const canvasEl = document.getElementById(`live-suite-canvas`);
+          if (videoEl) {
+            videoEl.srcObject = stream;
+            videoEl.classList.remove(`hidden`);
+          }
+          if (canvasEl) canvasEl.classList.add(`hidden`);
+          appState.liveSuite.screenSharing = true;
+          persistState();
+          showToast(`Live screen stream active`);
+          return;
+        } catch (err) {
+          // Fallback to simulated timeline stream inside sandbox
+        }
+      }
+      appState.liveSuite.screenSharing = true;
+      persistState();
+      renderLiveEditSuite();
+      showToast(`Simulated Timeline Stream Active (View-Only)`);
+    }
+
+    function endAndLockLiveEditSuite() {
+      const videoEl = document.getElementById(`live-suite-video`);
+      if (videoEl && videoEl.srcObject) {
+        videoEl.srcObject.getTracks().forEach(t => t.stop());
+        videoEl.srcObject = null;
+      }
+      appState.liveSuite.active = false;
+      appState.liveSuite.screenSharing = false;
+      persistState();
+      renderTopNavigation();
+      renderLiveEditSuite();
+      showToast(`Live Edit Suite ended and locked`);
+    }
+
+    function toggleSuiteMic(who) {
+      if (who === `editor`) appState.liveSuite.editorMicOn = !appState.liveSuite.editorMicOn;
+      else appState.liveSuite.guestMicOn = !appState.liveSuite.guestMicOn;
+      persistState();
+      renderLiveEditSuite();
+    }
+
+    function sendLiveSuiteChat() {
+      const text = document.getElementById(`suite-chat-input`)?.value.trim();
+      const refLink = document.getElementById(`suite-ref-input`)?.value.trim();
+      if (!text && !refLink) return;
+      const now = new Date();
+      const time = `${String(now.getHours()).padStart(2, `0`)}:${String(now.getMinutes()).padStart(2, `0`)}`;
+      appState.liveSuite.messages.push({
+        time,
+        author: `Brand Lead`,
+        role: `Client`,
+        text: text || `Shared reference link`,
+        refLink: refLink || ``
+      });
+      persistState();
+      renderLiveEditSuite();
+    }
+
+    function saveSuiteNotesToReviewLog() {
+      const ls = appState.liveSuite;
+      const proj = appState.projects.find(p => p.id === ls.projectId) || getActiveProject();
+      const summary = ls.messages.map(m => `[${m.time} ${m.author}] ${m.text}`).join(` | `);
+      proj.postProduction.reviews.client.push({
+        id: `rev_${Date.now()}`,
+        version: proj.postProduction.clientSync.previewVersion,
+        rounds: proj.postProduction.reviews.client.length + 1,
+        reason: `Live Edit Suite Session`,
+        notes: summary || `Live session notes logged`,
+        approved: false
+      });
+      persistState();
+      showToast(`Saved session notes to ${proj.name} Review Log`);
+    }
+
+    /* CLIENT GATE ACTIONS */
+    function toggleStrictClientPreview(val) {
+      appState.strictClientPreviewMode = Boolean(val);
+      persistState();
+      renderClientGate();
+    }
+
+    function renameActiveProject() {
+      const newName = document.getElementById(`cg-rename-input`)?.value.trim();
+      if (!newName) return;
+      getActiveProject().name = newName;
+      persistState();
+      renderClientGate();
+      showToast(`Renamed campaign to ${newName}`);
+    }
+
+    function submitClientFeedback(decision) {
+      const author = document.getElementById(`cf-author`)?.value.trim() || `Client Stakeholder`;
+      const role = document.getElementById(`cf-role`)?.value || `Brand Manager`;
+      const timecode = document.getElementById(`cf-tc`)?.value.trim();
+      const comment = document.getElementById(`cf-comment`)?.value.trim();
+      if (!comment) {
+        showToast(`Please enter feedback or approval notes.`);
+        return;
+      }
+      const proj = getActiveProject();
+      proj.clientFeedback.unshift({
+        id: `cf_${Date.now()}`,
+        author,
+        role,
+        timecode,
+        comment,
+        decision,
+        time: `2026-11-23`
+      });
+      if (decision === `Approve Cut`) {
+        proj.postProduction.clientSync.curatedStatus = `Final Master Delivered`;
+      }
+      persistState();
+      renderClientGate();
+      showToast(`Submitted ${decision}`);
+    }
+
+    function downloadClientMaster(pid) {
+      const proj = appState.projects.find(p => p.id === pid) || getActiveProject();
+      const manifest = [
+        `SLATE & GATE — FINAL MASTER DELIVERY MANIFEST`,
+        `Campaign: ${proj.name}`,
+        `Client: ${proj.client}`,
+        `Agency: ${proj.agency}`,
+        `Version: ${proj.postProduction.clientSync.previewVersion}`,
+        `Package Reference: ${proj.postProduction.clientSync.masterReleaseLink}`
+      ].join(`\n`);
+
+      if (window.notebookAppApi && typeof window.notebookAppApi.triggerFileDownload === `function`) {
+        window.notebookAppApi.triggerFileDownload({
+          content: manifest,
+          contentType: `text/plain`,
+          encoding: `UTF-8`,
+          filename: `${proj.id}_master_package_manifest.txt`
+        });
+      }
+      showToast(`Master Package Manifest downloaded`);
+    }
+
+    /* SETTINGS DATA CONTROLS */
+    function exportWorkspaceJson() {
+      const jsonStr = JSON.stringify(appState, null, 2);
+      if (window.notebookAppApi && typeof window.notebookAppApi.triggerFileDownload === `function`) {
+        window.notebookAppApi.triggerFileDownload({
+          content: jsonStr,
+          contentType: `text/plain`,
+          encoding: `UTF-8`,
+          filename: `slate_gate_workspace_backup.json`
+        });
+      }
+      showToast(`Workspace JSON backup exported`);
+    }
+
+    function triggerImportJson() {
+      document.getElementById(`import-json-input`)?.click();
+    }
+
+    function handleImportJson(e) {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result));
+          if (Array.isArray(parsed.projects) && parsed.projects.length) {
+            appState = parsed;
+            applyThemeAndPreferences();
+            persistState();
+            renderTopNavigation();
+            renderActiveView();
+            showToast(`Imported workspace backup`);
+          }
+        } catch (err) {
+          showToast(`Invalid JSON backup file`);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetDemoWorkspace(btn) {
+      if (btn.dataset.armed !== `true`) {
+        btn.dataset.armed = `true`;
+        btn.textContent = `Click again to confirm reset`;
+        setTimeout(() => {
+          btn.dataset.armed = `false`;
+          btn.textContent = `Reset Demo Data`;
+        }, 3500);
+        return;
+      }
+      btn.dataset.armed = `false`;
+      btn.textContent = `Reset Demo Data`;
+      appState = buildDefaultState();
+      applyThemeAndPreferences();
+      persistState();
+      renderTopNavigation();
+      renderActiveView();
+      showToast(`Workspace restored to default demo campaigns`);
+    }
+
+    async function initApp() {
+      try {
+        if (window.notebookAppApi && typeof window.notebookAppApi.getAppState === `function`) {
+          const saved = await window.notebookAppApi.getAppState();
+          if (saved && Array.isArray(saved.projects) && saved.projects.length) {
+            appState = { ...buildDefaultState(), ...saved };
+          }
+          const pwaText = document.getElementById(`pwa-status-text`);
+          if (pwaText && window.notebookAppApi.clientType) {
+            pwaText.textContent = `Client Mode: ${window.notebookAppApi.clientType} · Responsive PWA shell active.`;
+          }
+        }
+      } catch (err) {
+        // Fallback to default seed state
+      }
+
+      applyThemeAndPreferences();
+      initMouseHalo();
+      runSplashSequence();
+
+      if (!isStrictUrlClientMode) {
+        renderTopNavigation();
+        renderActiveView();
+      }
+
+      if (window.notebookAppApi && typeof window.notebookAppApi.notifyAppReady === `function`) {
+        window.notebookAppApi.notifyAppReady();
+      }
+    }
+
+    document.addEventListener(`DOMContentLoaded`, initApp);
+  </script>
+</body>
+</html>
